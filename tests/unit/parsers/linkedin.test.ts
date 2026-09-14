@@ -30,5 +30,8 @@ describe("linkedInParser", () => {
       location: "San Francisco, CA (Hybrid)",
       workMode: "hybrid",
     });
+    expect(fields?.skills).toEqual(
+      expect.arrayContaining(["TypeScript", "React", "PostgreSQL", "AWS", "Docker"]),
+    );
   });
 });

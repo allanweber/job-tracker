@@ -24,6 +24,11 @@ describe("openGraphFallbackParser", () => {
     expect(fields).toMatchObject({
       positionName: "Customer Success Manager",
       companyName: "Globex Careers",
+      location: "Austin, TX",
+      workMode: "hybrid",
     });
+    expect(fields?.skills).toEqual(
+      expect.arrayContaining(["Salesforce", "Excel", "Jira", "Stakeholder Management"]),
+    );
   });
 });

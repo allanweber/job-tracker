@@ -1,4 +1,6 @@
 import type { JobParser, ParseContext, ExtractedJobFields } from "../types";
+import { detectWorkMode } from "../work-mode";
+import { extractSkillsFromText } from "../skills";
 
 export const linkedInParser: JobParser = {
   name: "linkedin",
@@ -50,8 +52,32 @@ export const linkedInParser: JobParser = {
       .trim();
     if (locationText) fields.location = locationText;
 
-    if (/\bremote\b/i.test(`${locationText} ${title ?? ""}`)) fields.workMode = "remote";
-    else if (/\bhybrid\b/i.test(`${locationText} ${title ?? ""}`)) fields.workMode = "hybrid";
+    // Newer LinkedIn layouts show workplace type ("Remote"/"Hybrid"/"On-site")
+    // as its own element, and all the "flavor" bullets (not just the first,
+    // which we've already taken as the location) can carry it too.
+    const workplaceTypeText = $(
+      ".job-details-jobs-unified-top-card__workplace-type, .jobs-unified-top-card__workplace-type",
+    )
+      .first()
+      .text()
+      .trim();
+    const allBulletsText = $(
+      ".topcard__flavor--bullet, .job-details-jobs-unified-top-card__bullet",
+    )
+      .map((_, el) => $(el).text().trim())
+      .get()
+      .join(" ");
+
+    const detectedWorkMode = detectWorkMode(workplaceTypeText, allBulletsText, title);
+    if (detectedWorkMode) fields.workMode = detectedWorkMode;
+
+    const descriptionText = $(
+      ".description__text, .jobs-description__content, .jobs-box__html-content",
+    )
+      .first()
+      .text();
+    const skills = extractSkillsFromText(descriptionText);
+    if (skills.length > 0) fields.skills = skills;
 
     return Object.keys(fields).length > 0 ? fields : null;
   },

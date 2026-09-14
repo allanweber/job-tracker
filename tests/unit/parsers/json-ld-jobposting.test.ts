@@ -43,6 +43,7 @@ describe("jsonLdJobPostingParser", () => {
       positionName: "Product Designer",
       companyName: "Northwind",
       location: "Remote",
+      workMode: "remote",
       salaryMin: 95000,
       salaryMax: 95000,
       salaryPeriod: "year",
@@ -54,5 +55,19 @@ describe("jsonLdJobPostingParser", () => {
     const { html, $ } = loadFixture("generic-og-only.html");
     const ctx = { url: "https://example.com/careers/1", html, $ };
     expect(jsonLdJobPostingParser.canHandle(ctx)).toBe(false);
+  });
+
+  it("recovers from a Gupy-style HTML-entity-encoded JSON-LD payload and reads the workMode stashed in additionalProperty", () => {
+    const { html, $ } = loadFixture("gupy-jobposting.html");
+    const ctx = { url: "https://ids.gupy.io/job/abc123", html, $ };
+
+    const fields = jsonLdJobPostingParser.extract(ctx);
+
+    expect(fields).toMatchObject({
+      positionName: "Arquiteto de Software Sênior",
+      companyName: "IDS Software e Assessoria",
+      location: "Brasil",
+      workMode: "remote",
+    });
   });
 });

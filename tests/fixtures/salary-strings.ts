@@ -22,6 +22,18 @@ export const SALARY_CASES: { input: string; expected: StructuredSalary }[] = [
     expected: { min: 40000, max: 50000, currency: "EUR", period: undefined },
   },
   {
+    input: "R$ 8.000,00 a R$ 10.000,00 por ano",
+    expected: { min: 8000, max: 10000, currency: "BRL", period: "year" },
+  },
+  {
+    input: "R$ 8.000 a R$ 10.000",
+    expected: { min: 8000, max: 10000, currency: "BRL", period: undefined },
+  },
+  {
+    input: "R$ 50,00 por hora",
+    expected: { min: 50, max: 50, currency: "BRL", period: "hour" },
+  },
+  {
     input: "",
     expected: {},
   },

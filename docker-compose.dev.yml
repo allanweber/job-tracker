@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: jobtracker
       POSTGRES_DB: jobtracker
     ports:
-      - "5432:5432"
+      - "5439:5432"
     volumes:
       - job-tracker-dev-db:/var/lib/postgresql/data
 

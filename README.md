@@ -35,13 +35,13 @@ Playwright (scrape fallback) · pnpm
    ```
    pnpm dev
    ```
-   → http://localhost:3000
+   → http://localhost:3005
 
 ## OAuth setup
 
 Both providers need their callback URL set to:
 `{NEXT_PUBLIC_APP_URL}/api/auth/callback/{provider}` (e.g.
-`http://localhost:3000/api/auth/callback/google` for local dev).
+`http://localhost:3005/api/auth/callback/google` for local dev).
 
 - **Google**: [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
   → Create Credentials → OAuth client ID → Web application → add the callback
