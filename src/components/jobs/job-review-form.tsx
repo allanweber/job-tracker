@@ -1,0 +1,280 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TagInput } from "@/components/jobs/tag-input";
+import { DocumentPicker } from "@/components/jobs/document-picker";
+import { WORK_MODES, WORK_MODE_LABELS, SALARY_PERIODS } from "@/lib/constants";
+import { saveJob } from "@/server/actions/jobs";
+import { jobFormSchema, type JobFormValues } from "@/lib/validation/job.schema";
+import type { documents } from "@/server/db/schema";
+
+type FormState = Omit<JobFormValues, "skills" | "tags" | "stage"> & {
+  skills: string[];
+  tags: string[];
+};
+
+export function JobReviewForm({
+  initialValues,
+  documents: docs,
+  scrapeBanner,
+}: {
+  initialValues: Partial<FormState> & { sourceUrl: string };
+  documents: (typeof documents.$inferSelect)[];
+  scrapeBanner?: { tone: "warning" | "info"; message: string } | null;
+}) {
+  const [values, setValues] = useState<FormState>({
+    id: initialValues.id,
+    sourceUrl: initialValues.sourceUrl,
+    positionName: initialValues.positionName ?? "",
+    companyName: initialValues.companyName ?? "",
+    location: initialValues.location ?? "",
+    workMode: initialValues.workMode ?? null,
+    salaryMin: initialValues.salaryMin ?? null,
+    salaryMax: initialValues.salaryMax ?? null,
+    salaryCurrency: initialValues.salaryCurrency ?? "",
+    salaryPeriod: initialValues.salaryPeriod ?? null,
+    salaryRawText: initialValues.salaryRawText ?? "",
+    skills: initialValues.skills ?? [],
+    tags: initialValues.tags ?? [],
+    notes: initialValues.notes ?? "",
+    followUpDate: initialValues.followUpDate ?? "",
+    contactPerson: initialValues.contactPerson ?? "",
+    resumeDocumentId: initialValues.resumeDocumentId ?? null,
+    coverLetterDocumentId: initialValues.coverLetterDocumentId ?? null,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pending, startTransition] = useTransition();
+
+  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setValues((v) => ({ ...v, [key]: value }));
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = jobFormSchema.safeParse({ ...values, stage: "wishlist" });
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        fieldErrors[String(issue.path[0])] = issue.message;
+      }
+      setErrors(fieldErrors);
+      toast.error("Please fix the highlighted fields.");
+      return;
+    }
+    setErrors({});
+    startTransition(async () => {
+      try {
+        await saveJob(parsed.data);
+      } catch (err) {
+        // saveJob redirects on success; a thrown NEXT_REDIRECT is expected and re-thrown by Next.
+        if (err instanceof Error && err.message === "Job not found") {
+          toast.error("That job couldn't be found.");
+          return;
+        }
+        throw err;
+      }
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex max-w-2xl flex-col gap-5">
+      {scrapeBanner && (
+        <div
+          className={`rounded-md border p-3 text-sm ${
+            scrapeBanner.tone === "warning"
+              ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+              : "border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200"
+          }`}
+        >
+          {scrapeBanner.message}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="sourceUrl">Job URL</Label>
+        <Input
+          id="sourceUrl"
+          type="url"
+          value={values.sourceUrl}
+          onChange={(e) => set("sourceUrl", e.target.value)}
+        />
+        {errors.sourceUrl && <p className="text-sm text-destructive">{errors.sourceUrl}</p>}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="positionName">Position</Label>
+          <Input
+            id="positionName"
+            value={values.positionName}
+            onChange={(e) => set("positionName", e.target.value)}
+          />
+          {errors.positionName && (
+            <p className="text-sm text-destructive">{errors.positionName}</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="companyName">Company</Label>
+          <Input
+            id="companyName"
+            value={values.companyName}
+            onChange={(e) => set("companyName", e.target.value)}
+          />
+          {errors.companyName && <p className="text-sm text-destructive">{errors.companyName}</p>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            value={values.location ?? ""}
+            onChange={(e) => set("location", e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>Work mode</Label>
+          <Select
+            value={values.workMode ?? "unset"}
+            onValueChange={(v) => set("workMode", v === "unset" ? null : (v as FormState["workMode"]))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Not set" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unset">Not set</SelectItem>
+              {WORK_MODES.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {WORK_MODE_LABELS[m]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <fieldset className="flex flex-col gap-2 rounded-md border p-3">
+        <legend className="px-1 text-sm font-medium">Salary</legend>
+        <div className="grid grid-cols-4 gap-2">
+          <Input
+            type="number"
+            placeholder="Min"
+            value={values.salaryMin ?? ""}
+            onChange={(e) => set("salaryMin", e.target.value === "" ? null : Number(e.target.value))}
+          />
+          <Input
+            type="number"
+            placeholder="Max"
+            value={values.salaryMax ?? ""}
+            onChange={(e) => set("salaryMax", e.target.value === "" ? null : Number(e.target.value))}
+          />
+          <Input
+            placeholder="Currency"
+            maxLength={3}
+            value={values.salaryCurrency ?? ""}
+            onChange={(e) => set("salaryCurrency", e.target.value.toUpperCase())}
+          />
+          <Select
+            value={values.salaryPeriod ?? "unset"}
+            onValueChange={(v) =>
+              set("salaryPeriod", v === "unset" ? null : (v as FormState["salaryPeriod"]))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unset">Not set</SelectItem>
+              {SALARY_PERIODS.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p === "year" ? "/ year" : "/ hour"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Input
+          placeholder="Original text (fallback if the above isn't accurate)"
+          value={values.salaryRawText ?? ""}
+          onChange={(e) => set("salaryRawText", e.target.value)}
+        />
+      </fieldset>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>Main skills</Label>
+        <TagInput value={values.skills} onChange={(v) => set("skills", v)} />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>Tags</Label>
+        <TagInput value={values.tags} onChange={(v) => set("tags", v)} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <DocumentPicker
+          label="Resume"
+          kind="resume"
+          documents={docs}
+          value={values.resumeDocumentId ?? null}
+          onChange={(v) => set("resumeDocumentId", v)}
+        />
+        <DocumentPicker
+          label="Cover letter"
+          kind="cover_letter"
+          documents={docs}
+          value={values.coverLetterDocumentId ?? null}
+          onChange={(v) => set("coverLetterDocumentId", v)}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="contactPerson">Contact person</Label>
+          <Input
+            id="contactPerson"
+            value={values.contactPerson ?? ""}
+            onChange={(e) => set("contactPerson", e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="followUpDate">Follow-up date</Label>
+          <Input
+            id="followUpDate"
+            type="date"
+            value={values.followUpDate ?? ""}
+            onChange={(e) => set("followUpDate", e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          rows={4}
+          value={values.notes ?? ""}
+          onChange={(e) => set("notes", e.target.value)}
+        />
+      </div>
+
+      <div className="flex gap-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save job"}
+        </Button>
+      </div>
+    </form>
+  );
+}

@@ -1,36 +1,121 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Job Tracker
 
-## Getting Started
+A personal job-application tracker with a kanban pipeline. Paste a job posting
+URL and its Position, Company, Location, Work Mode, Salary, and Main Skills
+are scraped automatically — no manual retyping.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Next.js (App Router) · TypeScript · PostgreSQL · Drizzle ORM · Better Auth
+(Google/GitHub OAuth) · Tailwind + shadcn/ui · dnd-kit · Cloudflare R2 ·
+Playwright (scrape fallback) · pnpm
+
+## Local development
+
+1. **Start a local Postgres:**
+   ```
+   docker compose -f docker-compose.dev.yml up -d
+   ```
+2. **Copy the env file and fill in real values:**
+   ```
+   cp .env.example .env.local
+   ```
+   - `BETTER_AUTH_SECRET`: generate with `openssl rand -hex 32`
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: see [OAuth setup](#oauth-setup) below
+   - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: see [OAuth setup](#oauth-setup) below
+   - `R2_*`: see [Document storage setup](#document-storage-setup) below — optional
+     until you want to test resume/cover-letter uploads
+3. **Install dependencies and apply the schema:**
+   ```
+   pnpm install
+   pnpm db:generate   # only needed after changing src/server/db/schema/*
+   pnpm db:migrate
+   ```
+4. **Run it:**
+   ```
+   pnpm dev
+   ```
+   → http://localhost:3000
+
+## OAuth setup
+
+Both providers need their callback URL set to:
+`{NEXT_PUBLIC_APP_URL}/api/auth/callback/{provider}` (e.g.
+`http://localhost:3000/api/auth/callback/google` for local dev).
+
+- **Google**: [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+  → Create Credentials → OAuth client ID → Web application → add the callback
+  URL above under "Authorized redirect URIs".
+- **GitHub**: [github.com/settings/developers](https://github.com/settings/developers)
+  → New OAuth App → set "Authorization callback URL" to the URL above.
+
+## Document storage setup (Cloudflare R2)
+
+1. Create a bucket in the [Cloudflare dashboard](https://dash.cloudflare.com/) → R2.
+2. Create an API token scoped to that bucket (Object Read & Write).
+3. Fill in `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+   `R2_BUCKET_NAME`, `R2_ENDPOINT` (`https://<account_id>.r2.cloudflarestorage.com`).
+
+The bucket stays private — the app only ever hands out short-lived presigned
+upload/download URLs.
+
+## Testing
+
+```
+pnpm test        # unit tests for the scraper parsers + salary parser
+pnpm lint
+pnpm exec tsc --noEmit
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Scraper tests run against saved HTML fixtures in `tests/fixtures/html/` — no
+network access needed. When a real site starts mis-parsing, save a trimmed
+copy of its HTML there and add a case, rather than only fixing the regex/logic.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploying (Dokploy)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app is a single Dockerfile deploy — Dokploy builds and runs it directly
+from the git repo.
 
-## Learn More
+1. **Push this repo to GitHub** and connect it as a Dokploy application
+   (Dockerfile build type).
+2. **Build argument** — set in Dokploy's build settings:
+   - `NEXT_PUBLIC_APP_URL` — the app's real public URL (e.g.
+     `https://jobs.example.com`). This gets inlined into the client bundle at
+     build time, so it must be correct *before* building, not just set as a
+     runtime env var.
+3. **Runtime environment variables** — set in Dokploy's environment settings
+   (see `.env.example` for the full list): `DATABASE_URL` (point at a Postgres
+   instance provisioned in Dokploy — dedicated to this app), `BETTER_AUTH_SECRET`,
+   `NEXT_PUBLIC_APP_URL` (same value as the build arg), the OAuth credentials
+   (with their callback URLs updated to the production domain), and the R2
+   credentials.
+4. **Enable git-based auto-deploy** on the Dokploy application so pushes to
+   the branch trigger a rebuild + redeploy automatically. Database migrations
+   run automatically as part of container startup (`docker-entrypoint.sh`) —
+   no manual migration step needed on deploy.
 
-To learn more about Next.js, take a look at the following resources:
+### Note on the runtime image
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The production image is built from Playwright's own base image
+(`mcr.microsoft.com/playwright`), which bundles Chromium and its OS
+dependencies — this makes the image large (multi-hundred MB), which is an
+accepted trade-off for a single self-hosted instance rather than a
+size-sensitive serverless deploy.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture notes
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/**` — routes/UI only. All DB access and business logic lives under
+  `src/server/**`.
+- `src/server/scraping/**` — the tiered scraper (plain fetch → Playwright
+  fallback → logged failure), with zero Next.js imports so it's directly
+  unit-testable. See `src/server/scraping/orchestrator.ts` for the entry point
+  and `src/server/scraping/parsers/` for the pluggable parser registry
+  (schema.org JSON-LD first, then LinkedIn-specific, then a generic
+  OpenGraph/meta fallback).
+- Failed scrapes are logged to the `scrape_failures` table, visible at
+  `/admin/scrape-failures` — use it to spot which sites need a new parser.
+- `src/server/db/migrate.ts` is a standalone, separately-compiled
+  (`pnpm build:migrate`) migration runner used only at container startup — it
+  deliberately avoids the `drizzle-kit` CLI at runtime, since its
+  pnpm-symlinked `node_modules` layout doesn't survive being copied into the
+  slim Docker image.
