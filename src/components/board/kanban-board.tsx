@@ -5,9 +5,11 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -18,6 +20,30 @@ import { JobCard } from "@/components/board/job-card";
 import { STAGES, STAGE_LABELS, type Stage } from "@/lib/constants";
 import { moveJob } from "@/server/actions/jobs";
 import type { JobWithTags } from "@/server/db/queries/jobs";
+
+/**
+ * `closestCorners` (dnd-kit's usual default) ranks *every* droppable rect
+ * by distance — including each card's own droppable nested inside a
+ * column. A short/empty column (Interviewing, Offer — whichever has few
+ * or no cards) is just a thin container rect, and routinely loses that
+ * distance comparison to cards sitting in a taller neighboring column, so
+ * it can end up effectively impossible to drop into even with the
+ * pointer directly over it.
+ *
+ * `pointerWithin` instead asks "which droppable rects literally contain
+ * the pointer" — an empty column resolves correctly regardless of what's
+ * next to it, and when the pointer *is* over a card, both that card's
+ * rect and its parent column's rect match (nested), with the smaller/more
+ * specific one (the card) taking precedence for in-column reordering.
+ * `rectIntersection` is only a fallback for the rare moment the pointer
+ * sits somewhere no rect contains it at all (e.g. a column's outer
+ * padding), so a drop there still resolves to the nearest column instead
+ * of silently failing.
+ */
+const collisionDetectionStrategy: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args);
+};
 
 function groupByStage(jobs: JobWithTags[]) {
   const groups = Object.fromEntries(STAGES.map((s) => [s, [] as JobWithTags[]])) as Record<
@@ -118,7 +144,7 @@ export function KanbanBoard({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}

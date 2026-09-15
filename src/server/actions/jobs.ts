@@ -41,9 +41,26 @@ export async function saveJob(values: unknown) {
 
   const jobId = await db.transaction(async (tx) => {
     if (parsed.id) {
+      const [existing] = await tx
+        .select({ stage: jobs.stage })
+        .from(jobs)
+        .where(and(eq(jobs.id, parsed.id), eq(jobs.userId, user.id)));
+      if (!existing) throw new Error("Job not found");
+
+      // The form's Status select is the only way to change stage outside
+      // drag-and-drop — only recompute `boardOrder` (top of the target
+      // column) when it's actually moving to a different stage, so an
+      // edit that leaves the stage alone can't disturb its position in
+      // the current column.
+      const stageChanged = existing.stage !== parsed.stage;
+
       const [row] = await tx
         .update(jobs)
-        .set(jobValues)
+        .set({
+          ...jobValues,
+          stage: parsed.stage,
+          ...(stageChanged ? { boardOrder: await nextTopBoardOrder(user.id, parsed.stage) } : {}),
+        })
         .where(and(eq(jobs.id, parsed.id), eq(jobs.userId, user.id)))
         .returning({ id: jobs.id });
       if (!row) throw new Error("Job not found");

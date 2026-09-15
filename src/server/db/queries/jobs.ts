@@ -52,6 +52,12 @@ export async function getJobEditValues(userId: string, jobId: string) {
 
   return {
     id: job.id,
+    // The DB column still allows a legacy "wishlist" value the board no
+    // longer surfaces (see the comment on `STAGES` in lib/constants.ts) —
+    // normalize it to "applied" here so the edit form's Status select
+    // (which only lists current stages) always has a valid value to show,
+    // rather than a stage no `SelectItem` matches.
+    stage: job.stage === "wishlist" ? "applied" : job.stage,
     sourceUrl: job.sourceUrl,
     positionName: job.positionName ?? "",
     companyName: job.companyName ?? "",

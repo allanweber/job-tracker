@@ -1,7 +1,24 @@
 import { BookmarkletLink } from "@/components/jobs/bookmarklet-link";
 
 function buildBookmarklet(origin: string) {
-  const js = `(function(){window.open('${origin}/jobs/new?url='+encodeURIComponent(location.href),'_blank')})();`;
+  // Opens `/quick-add` (a deliberately chrome-free route — see its own
+  // comment) in a small, centered popup window sized like a dialog,
+  // instead of a full new tab showing the whole app. `noopener` is kept
+  // even though it means the browser won't reuse a same-named popup
+  // across repeated clicks (per spec, `noopener` always forces a fresh
+  // browsing context) — the tradeoff favors not handing the arbitrary
+  // page this runs on a `window.opener` back-reference into our
+  // authenticated app. Each popup closes itself a moment after a
+  // successful save anyway, so clutter from not reusing one is minor and
+  // short-lived.
+  const js = `(function(){
+    var u='${origin}/quick-add?url='+encodeURIComponent(location.href);
+    var w=Math.min(480,screen.width-40);
+    var h=Math.min(720,screen.height-80);
+    var l=Math.round((screen.width-w)/2);
+    var t=Math.round((screen.height-h)/2);
+    window.open(u,'job-tracker-quick-add','popup=1,width='+w+',height='+h+',left='+l+',top='+t+',noopener');
+  })();`;
   return `javascript:${encodeURIComponent(js)}`;
 }
 
@@ -15,7 +32,7 @@ export default function BookmarkletPage() {
         <h1 className="text-xl font-semibold">Bookmarklet</h1>
         <p className="text-sm text-muted-foreground">
           Drag the button below to your bookmarks bar. On any job listing page, click it to
-          capture the URL and open a pre-filled review form here — no copy/paste needed.
+          capture the URL in a small popup — no tab-switching, no copy/paste needed.
         </p>
       </div>
       <div className="rounded-lg border p-6 text-center">
