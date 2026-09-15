@@ -54,4 +54,12 @@ RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 3000
 ENV PORT=3000
+# Next's standalone server.js binds to process.env.HOSTNAME, defaulting to
+# 0.0.0.0 only when unset. Docker auto-injects HOSTNAME=<container-id> into
+# every container, which server.js then resolves via /etc/hosts to 127.0.0.1
+# — binding to loopback only, unreachable from other containers on the same
+# network (e.g. a cloudflared sidecar dialing the app's container IP gets
+# "connection refused" even though the app logs "Ready"). Pin it explicitly
+# so Docker's value can't win.
+ENV HOSTNAME=0.0.0.0
 ENTRYPOINT ["./docker-entrypoint.sh"]
