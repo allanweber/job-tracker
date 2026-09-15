@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsPanel } from "@/components/ui/tabs";
 import { TagInput } from "@/components/jobs/tag-input";
-import { DocumentPicker } from "@/components/jobs/document-picker";
+import { FileField } from "@/components/jobs/file-field";
 import { STAGES, STAGE_LABELS, WORK_MODES, WORK_MODE_LABELS, SALARY_PERIODS } from "@/lib/constants";
 import { saveJob } from "@/server/actions/jobs";
 import { jobFormSchema, type JobFormValues } from "@/lib/validation/job.schema";
@@ -287,14 +287,14 @@ export function JobReviewForm({
 
         <TabsPanel value="files" className="h-[50vh] overflow-y-auto pr-1">
           <div className="grid grid-cols-2 gap-4">
-            <DocumentPicker
+            <FileField
               label="Resume"
               kind="resume"
               documents={docs}
               value={values.resumeDocumentId ?? null}
               onChange={(v) => set("resumeDocumentId", v)}
             />
-            <DocumentPicker
+            <FileField
               label="Cover letter"
               kind="cover_letter"
               documents={docs}
