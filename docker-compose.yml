@@ -1,0 +1,68 @@
+# Dokploy "Compose" deployment: the Next.js app + a Cloudflare Tunnel.
+# The app is never exposed to the host — Cloudflare reaches it over the
+# private compose network, so no inbound ports need to be opened.
+#
+# `dokploy-network` is Dokploy's shared external network; the app joins it so
+# it can resolve the Dokploy Postgres service by name (e.g.
+# job-tracker-db-...). The DATABASE_URL host must be that service name.
+#
+# Unlike a multi-service Dockerfile setup, this image runs migrations then
+# starts the server in the same container (see docker-entrypoint.sh) — there
+# is no separate migrator stage/service to wire up here.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # NEXT_PUBLIC_APP_URL is inlined into the client bundle at build time,
+      # so it must be the real public URL *before* building, not just set as
+      # a runtime env var below.
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    restart: unless-stopped
+    # Values are set in Dokploy's Environment tab and interpolated here (same
+    # pattern as TUNNEL_TOKEN below).
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      # OAuth providers (update callback URLs to the production domain).
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      # Cloudflare R2 (document storage).
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME:-}
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+    expose:
+      - "3000"
+    networks:
+      # job-tracker: reach the Cloudflare tunnel. dokploy-network: reach the DB.
+      - job-tracker
+      - dokploy-network
+
+  cloudflared:
+    # Pinned (not `:latest`) so deploys are reproducible and a surprise
+    # upstream change can't roll in unreviewed. Override/bump via the
+    # CLOUDFLARED_VERSION env in Dokploy after confirming the tag.
+    image: cloudflare/cloudflared:${CLOUDFLARED_VERSION:-2024.12.2}
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # Token of the named tunnel created in the Cloudflare Zero Trust
+      # dashboard, pointed at http://app:3000.
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - app
+    networks:
+      - job-tracker
+
+networks:
+  job-tracker:
+    driver: bridge
+  dokploy-network:
+    external: true

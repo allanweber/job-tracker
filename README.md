@@ -94,6 +94,20 @@ from the git repo.
    run automatically as part of container startup (`docker-entrypoint.sh`) —
    no manual migration step needed on deploy.
 
+### Alternative: Compose deploy with a Cloudflare Tunnel
+
+`docker-compose.yml` deploys the same image as a Dokploy "Compose"
+application alongside a `cloudflared` sidecar, so the app is never exposed on
+a host port — Cloudflare reaches it over the private compose network.
+
+1. Create a tunnel in the Cloudflare Zero Trust dashboard, point its public
+   hostname at `http://app:3000`, and copy its token.
+2. In Dokploy's Environment tab for the compose app, set the same runtime
+   variables as above plus `TUNNEL_TOKEN` (the tunnel token from step 1).
+   `NEXT_PUBLIC_APP_URL` is passed through as a build arg automatically.
+3. Optionally set `CLOUDFLARED_VERSION` to pin a different `cloudflared`
+   image tag (defaults to `2024.12.2`).
+
 ### Note on the runtime image
 
 The production image is built from Playwright's own base image
