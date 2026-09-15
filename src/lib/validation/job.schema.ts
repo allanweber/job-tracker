@@ -22,7 +22,7 @@ export const jobFormSchema = z.object({
   followUpDate: z.string().trim().optional().nullable(), // yyyy-mm-dd
   contactPerson: z.string().trim().optional().nullable(),
 
-  stage: z.enum(STAGES).default("wishlist"),
+  stage: z.enum(STAGES).default("applied"),
 
   resumeDocumentId: z.uuid().optional().nullable(),
   coverLetterDocumentId: z.uuid().optional().nullable(),

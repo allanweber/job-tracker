@@ -10,7 +10,7 @@ export default function BookmarkletPage() {
   const href = buildBookmarklet(origin);
 
   return (
-    <div className="flex max-w-xl flex-col gap-4">
+    <div className="flex max-w-[480px] flex-col gap-4">
       <div>
         <h1 className="text-xl font-semibold">Bookmarklet</h1>
         <p className="text-sm text-muted-foreground">

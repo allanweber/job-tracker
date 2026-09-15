@@ -1,21 +1,24 @@
-export const STAGES = [
-  "wishlist",
-  "applied",
-  "interviewing",
-  "offer",
-  "rejected",
-  "no_answer",
-] as const;
+// The `stage` column also allows a legacy "wishlist" value at the database
+// level (see server/db/schema/jobs.ts), but the board no longer surfaces it:
+// every new job lands straight in "applied".
+export const STAGES = ["applied", "interviewing", "offer", "rejected", "no_answer"] as const;
 
 export type Stage = (typeof STAGES)[number];
 
 export const STAGE_LABELS: Record<Stage, string> = {
-  wishlist: "Wishlist",
   applied: "Applied",
   interviewing: "Interviewing",
   offer: "Offer",
   rejected: "Rejected",
   no_answer: "No Answer",
+};
+
+export const STAGE_COLORS: Record<Stage, string> = {
+  applied: "#f59e0b",
+  interviewing: "#8b5cf6",
+  offer: "#22c55e",
+  rejected: "#ef4444",
+  no_answer: "#6b7280",
 };
 
 export const WORK_MODES = ["remote", "hybrid", "onsite"] as const;

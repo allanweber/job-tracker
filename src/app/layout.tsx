@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// `--font-sans` is what `globals.css`'s `@theme inline` block (and every
+// `font-sans` utility class) actually reads — the variable name here has to
+// match, or the font silently falls back to the browser default.
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
@@ -22,7 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

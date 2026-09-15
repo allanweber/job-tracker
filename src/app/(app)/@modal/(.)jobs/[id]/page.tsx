@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/server/auth/session";
 import { getJobEditValues } from "@/server/db/queries/jobs";
 import { listDocumentsForUser } from "@/server/db/queries/documents";
-import { JobDetailClient } from "@/components/jobs/job-detail-client";
+import { JobEditModal } from "@/components/jobs/job-edit-modal";
 
-export default async function JobDetailPage({
+export default async function InterceptedJobDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -19,5 +19,5 @@ export default async function JobDetailPage({
 
   if (!job) notFound();
 
-  return <JobDetailClient job={job} documents={documents} />;
+  return <JobEditModal job={job} documents={documents} />;
 }

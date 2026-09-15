@@ -38,6 +38,40 @@ export async function getJobForUser(userId: string, jobId: string) {
   return row ?? null;
 }
 
+/** Job fields shaped as `JobReviewForm` initial values, plus the tag names for that job. */
+export async function getJobEditValues(userId: string, jobId: string) {
+  const [job, jobTagRows] = await Promise.all([
+    getJobForUser(userId, jobId),
+    db
+      .select({ name: tags.name })
+      .from(jobTags)
+      .innerJoin(tags, eq(tags.id, jobTags.tagId))
+      .where(eq(jobTags.jobId, jobId)),
+  ]);
+  if (!job) return null;
+
+  return {
+    id: job.id,
+    sourceUrl: job.sourceUrl,
+    positionName: job.positionName ?? "",
+    companyName: job.companyName ?? "",
+    location: job.location ?? "",
+    workMode: job.workMode,
+    salaryMin: job.salaryMin,
+    salaryMax: job.salaryMax,
+    salaryCurrency: job.salaryCurrency ?? "",
+    salaryPeriod: job.salaryPeriod,
+    salaryRawText: job.salaryRawText ?? "",
+    skills: job.skills,
+    tags: jobTagRows.map((r) => r.name),
+    notes: job.notes ?? "",
+    followUpDate: job.followUpDate ?? "",
+    contactPerson: job.contactPerson ?? "",
+    resumeDocumentId: job.resumeDocumentId,
+    coverLetterDocumentId: job.coverLetterDocumentId,
+  };
+}
+
 /** Fractional index for the top of a column: below the current minimum. */
 export async function nextTopBoardOrder(userId: string, stage: (typeof jobs.$inferSelect)["stage"]) {
   const rows = await db

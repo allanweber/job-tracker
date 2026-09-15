@@ -10,9 +10,11 @@ import type { documents } from "@/server/db/schema";
 export function ScrapeAndReview({
   url,
   documents: docs,
+  onClose,
 }: {
   url: string;
   documents: (typeof documents.$inferSelect)[];
+  onClose?: () => void;
 }) {
   const [state, setState] = useState<
     | { status: "loading" }
@@ -57,6 +59,7 @@ export function ScrapeAndReview({
       initialValues={{ sourceUrl: url, ...(state.status === "ok" ? state.fields : {}) }}
       documents={docs}
       scrapeBanner={banner}
+      onClose={onClose}
     />
   );
 }

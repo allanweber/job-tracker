@@ -3,25 +3,35 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { JobCard } from "@/components/board/job-card";
-import type { Stage } from "@/lib/constants";
+import { STAGE_COLORS, type Stage } from "@/lib/constants";
 import type { JobWithTags } from "@/server/db/queries/jobs";
 
 export function KanbanColumn({
   stage,
   label,
   jobs,
+  onDeleted,
 }: {
   stage: Stage;
   label: string;
   jobs: JobWithTags[];
+  onDeleted: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage, data: { stage } });
 
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-sm font-semibold">{label}</h2>
-        <span className="text-xs text-muted-foreground">{jobs.length}</span>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: STAGE_COLORS[stage] }}
+          />
+          <h2 className="text-sm font-semibold">{label}</h2>
+        </div>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          {jobs.length}
+        </span>
       </div>
       <div
         ref={setNodeRef}
@@ -31,7 +41,7 @@ export function KanbanColumn({
       >
         <SortableContext items={jobs.map((j) => j.id)} strategy={verticalListSortingStrategy}>
           {jobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <JobCard key={job.id} job={job} onDeleted={onDeleted} />
           ))}
         </SortableContext>
       </div>

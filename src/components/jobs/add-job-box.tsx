@@ -12,23 +12,32 @@ export function AddJobBox() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = url.trim();
-    router.push(trimmed ? `/jobs/new?url=${encodeURIComponent(trimmed)}` : "/jobs/new");
+    if (!trimmed) return;
+    router.push(`/jobs/new?url=${encodeURIComponent(trimmed)}`);
+    setUrl("");
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <Input
-        type="url"
-        inputMode="url"
-        placeholder="Paste a job posting URL…"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        className="max-w-md"
-      />
-      <Button type="submit">Add job</Button>
-      <Button type="button" variant="ghost" onClick={() => router.push("/jobs/new")}>
-        Add manually
+    <div className="flex flex-wrap items-center gap-2.5 rounded-lg border bg-muted/40 px-3.5 py-3">
+      <Button type="button" onClick={() => router.push("/jobs/new")} className="shrink-0">
+        + Add new job
       </Button>
-    </form>
+      <span className="shrink-0 text-xs text-muted-foreground">
+        or paste a posting URL to auto-fill
+      </span>
+      <form onSubmit={handleSubmit} className="flex min-w-60 flex-1 gap-2">
+        <Input
+          type="url"
+          inputMode="url"
+          placeholder="https://…"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          className="min-w-0 flex-1"
+        />
+        <Button type="submit" variant="outline" className="shrink-0">
+          Fetch
+        </Button>
+      </form>
+    </div>
   );
 }

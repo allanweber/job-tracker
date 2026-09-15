@@ -1,8 +1,8 @@
 import { requireUser } from "@/server/auth/session";
 import { listDocumentsForUser } from "@/server/db/queries/documents";
-import { JobNewPageClient } from "@/components/jobs/job-new-page-client";
+import { JobNewModal } from "@/components/jobs/job-new-modal";
 
-export default async function NewJobPage({
+export default async function InterceptedNewJobPage({
   searchParams,
 }: {
   searchParams: Promise<{ url?: string }>;
@@ -11,5 +11,5 @@ export default async function NewJobPage({
   const { url } = await searchParams;
   const documents = await listDocumentsForUser(user.id);
 
-  return <JobNewPageClient url={url} documents={documents} />;
+  return <JobNewModal url={url} documents={documents} />;
 }

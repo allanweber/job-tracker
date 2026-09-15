@@ -29,10 +29,17 @@ export function JobReviewForm({
   initialValues,
   documents: docs,
   scrapeBanner,
+  onClose,
 }: {
   initialValues: Partial<FormState> & { sourceUrl: string };
   documents: (typeof documents.$inferSelect)[];
   scrapeBanner?: { tone: "warning" | "info"; message: string } | null;
+  /**
+   * Called both to cancel and after a successful save. How to navigate away
+   * differs by context (a plain `router.push` won't close the add/edit
+   * modal — see the modal wrapper components), so the caller decides.
+   */
+  onClose?: () => void;
 }) {
   const [values, setValues] = useState<FormState>({
     id: initialValues.id,
@@ -63,7 +70,10 @@ export function JobReviewForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = jobFormSchema.safeParse({ ...values, stage: "wishlist" });
+    // `stage` isn't editable from this form — `saveJob` ignores it for edits
+    // and always defaults new jobs to "applied" — but the schema requires a
+    // valid value, so supply a placeholder that satisfies it.
+    const parsed = jobFormSchema.safeParse({ ...values, stage: "applied" });
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
@@ -77,13 +87,14 @@ export function JobReviewForm({
     startTransition(async () => {
       try {
         await saveJob(parsed.data);
+        toast.success(parsed.data.id ? "Job updated" : "Job saved");
+        onClose?.();
       } catch (err) {
-        // saveJob redirects on success; a thrown NEXT_REDIRECT is expected and re-thrown by Next.
         if (err instanceof Error && err.message === "Job not found") {
           toast.error("That job couldn't be found.");
           return;
         }
-        throw err;
+        toast.error("Couldn't save that job — please try again.");
       }
     });
   }
@@ -274,6 +285,11 @@ export function JobReviewForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save job"}
         </Button>
+        {onClose && (
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+            Cancel
+          </Button>
+        )}
       </div>
     </form>
   );

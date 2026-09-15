@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { jobs } from "@/server/db/schema";
@@ -52,18 +51,22 @@ export async function saveJob(values: unknown) {
       return row.id;
     }
 
-    const boardOrder = await nextTopBoardOrder(user.id, "wishlist");
+    const boardOrder = await nextTopBoardOrder(user.id, "applied");
     const [row] = await tx
       .insert(jobs)
-      .values({ ...jobValues, stage: "wishlist", boardOrder })
+      .values({ ...jobValues, stage: "applied", boardOrder })
       .returning({ id: jobs.id });
     await syncJobTags(tx, user.id, row.id, parsed.tags);
     return row.id;
   });
 
   revalidatePath("/board");
-  redirect("/board");
 
+  // Deliberately no server-side `redirect()` here: this action is called
+  // from both the standalone /jobs/new and /jobs/[id] pages and from the
+  // add/edit modal (an intercepted parallel route). A `redirect()` doesn't
+  // reliably clear the modal's parallel-route slot, so the caller navigates
+  // client-side instead — see JobReviewForm's `handleSubmit`.
   return jobId;
 }
 

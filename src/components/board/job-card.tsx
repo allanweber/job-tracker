@@ -6,22 +6,18 @@ import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { FollowUpBadge } from "@/components/board/follow-up-badge";
+import { DeleteJobButton } from "@/components/board/delete-job-button";
 import { WORK_MODE_LABELS } from "@/lib/constants";
+import { formatSalary } from "@/lib/format-salary";
 import type { JobWithTags } from "@/server/db/queries/jobs";
 
-function formatSalary(job: JobWithTags): string | null {
-  if (job.salaryMin || job.salaryMax) {
-    const currency = job.salaryCurrency ?? "";
-    const period = job.salaryPeriod === "hour" ? "/hr" : "/yr";
-    if (job.salaryMin && job.salaryMax) {
-      return `${currency} ${job.salaryMin.toLocaleString()}–${job.salaryMax.toLocaleString()}${period}`;
-    }
-    return `${currency} ${(job.salaryMin ?? job.salaryMax)!.toLocaleString()}${period}`;
-  }
-  return job.salaryRawText ?? null;
-}
-
-export function JobCard({ job }: { job: JobWithTags }) {
+export function JobCard({
+  job,
+  onDeleted,
+}: {
+  job: JobWithTags;
+  onDeleted?: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: job.id,
     data: { stage: job.stage },
@@ -41,18 +37,26 @@ export function JobCard({ job }: { job: JobWithTags }) {
       style={style}
       {...attributes}
       {...listeners}
-      className="cursor-grab gap-2 py-3 active:cursor-grabbing"
+      className="relative cursor-grab gap-2 py-3 active:cursor-grabbing"
     >
-      <CardHeader className="px-3">
+      {onDeleted && (
+        <DeleteJobButton
+          jobId={job.id}
+          label={job.companyName || job.positionName || "This job"}
+          onDeleted={() => onDeleted(job.id)}
+          className="absolute top-2 right-2"
+        />
+      )}
+      <CardHeader className="px-3 pr-8">
         <Link
           href={`/jobs/${job.id}`}
           className="font-medium leading-tight hover:underline"
           // Avoid the drag listeners hijacking a plain click on the title.
           onClick={(e) => e.stopPropagation()}
         >
-          {job.positionName || "Untitled position"}
+          {job.companyName || "Unknown company"}
         </Link>
-        <p className="text-sm text-muted-foreground">{job.companyName || "Unknown company"}</p>
+        <p className="text-sm text-muted-foreground">{job.positionName || "Untitled position"}</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 px-3">
         <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">

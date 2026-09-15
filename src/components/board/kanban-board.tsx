@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -25,7 +25,7 @@ function groupByStage(jobs: JobWithTags[]) {
     JobWithTags[]
   >;
   for (const job of jobs) {
-    groups[job.stage as Stage].push(job);
+    groups[job.stage as Stage]?.push(job);
   }
   for (const stage of STAGES) {
     groups[stage].sort((a, b) => a.boardOrder - b.boardOrder);
@@ -33,8 +33,17 @@ function groupByStage(jobs: JobWithTags[]) {
   return groups;
 }
 
-export function KanbanBoard({ initialJobs }: { initialJobs: JobWithTags[] }) {
-  const [jobs, setJobs] = useState(initialJobs);
+export function KanbanBoard({
+  jobs,
+  setJobs,
+  onDeleted,
+}: {
+  /** The (possibly search-filtered) jobs to display. */
+  jobs: JobWithTags[];
+  /** Setter for the full, unfiltered job list held by the parent. */
+  setJobs: Dispatch<SetStateAction<JobWithTags[]>>;
+  onDeleted: (id: string) => void;
+}) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -43,7 +52,7 @@ export function KanbanBoard({ initialJobs }: { initialJobs: JobWithTags[] }) {
 
   function findStage(id: string): Stage | null {
     if (STAGES.includes(id as Stage)) return id as Stage;
-    return jobs.find((j) => j.id === id)?.stage as Stage | undefined ?? null;
+    return (jobs.find((j) => j.id === id)?.stage as Stage | undefined) ?? null;
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -69,7 +78,10 @@ export function KanbanBoard({ initialJobs }: { initialJobs: JobWithTags[] }) {
     const targetStage = findStage(String(over.id));
     if (!targetStage) return;
 
-    const previousJobs = jobs;
+    const draggedJob = jobs.find((j) => j.id === jobId);
+    const previousStage = draggedJob?.stage;
+    const previousBoardOrder = draggedJob?.boardOrder;
+
     const columnJobs = groupByStage(jobs)[targetStage].filter((j) => j.id !== jobId);
     const overIndex = columnJobs.findIndex((j) => j.id === over.id);
     const insertAt = overIndex === -1 ? columnJobs.length : overIndex;
@@ -92,7 +104,13 @@ export function KanbanBoard({ initialJobs }: { initialJobs: JobWithTags[] }) {
     try {
       await moveJob(jobId, { stage: targetStage, boardOrder });
     } catch {
-      setJobs(previousJobs);
+      if (previousStage !== undefined && previousBoardOrder !== undefined) {
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === jobId ? { ...j, stage: previousStage, boardOrder: previousBoardOrder } : j,
+          ),
+        );
+      }
       toast.error("Couldn't move that card — please try again.");
     }
   }
@@ -105,13 +123,14 @@ export function KanbanBoard({ initialJobs }: { initialJobs: JobWithTags[] }) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="grid grid-cols-5 gap-3">
         {STAGES.map((stage) => (
           <KanbanColumn
             key={stage}
             stage={stage}
             label={STAGE_LABELS[stage]}
             jobs={groups[stage]}
+            onDeleted={onDeleted}
           />
         ))}
       </div>
