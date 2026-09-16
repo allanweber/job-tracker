@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/generate-extension-config.mjs",
     "dev": "next dev -p 3005",
-    "prebuild": "node scripts/generate-extension-config.mjs",
     "build": "next build",
     "build:migrate": "tsc -p tsconfig.migrate.json",
     "start": "next start",
@@ -13,11 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "ext:configure": "node scripts/generate-extension-config.mjs",
-    "ext:lint": "pnpm ext:configure && web-ext lint --source-dir=extension --ignore-files=icons/icon.svg --ignore-files=icons/generate.sh --ignore-files=README.md --ignore-files=PRIVACY.md --ignore-files=STORE_LISTING.md",
-    "ext:build": "pnpm ext:configure && web-ext build --source-dir=extension --artifacts-dir=extension/dist --overwrite-dest --ignore-files=icons/icon.svg --ignore-files=icons/generate.sh --ignore-files=README.md --ignore-files=PRIVACY.md --ignore-files=STORE_LISTING.md",
-    "ext:sign": "pnpm ext:configure && web-ext sign --source-dir=extension --artifacts-dir=extension/dist --channel=unlisted --ignore-files=icons/icon.svg --ignore-files=icons/generate.sh --ignore-files=README.md --ignore-files=PRIVACY.md --ignore-files=STORE_LISTING.md"
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",
@@ -58,8 +52,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",
-    "vitest": "^5.0.0",
-    "web-ext": "^10.6.0"
+    "vitest": "^5.0.0"
   },
   "packageManager": "pnpm@11.22.0"
 }

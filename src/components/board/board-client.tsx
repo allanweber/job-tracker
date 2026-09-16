@@ -26,7 +26,7 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Jobs saved via the bookmarklet/extension happen on /quick-add, a
+  // Jobs saved via the bookmarklet happen on /quick-add, a
   // *different* tab or popup window from this one — the server action there
   // revalidates the "/board" cache, but that doesn't push anything into an
   // already-open board tab. Instead, refresh whenever this tab regains focus

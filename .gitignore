@@ -37,9 +37,6 @@ yarn-error.log*
 # migration compile output (produced at Docker build time)
 /dist
 
-# extension package/sign output (pnpm ext:build / ext:sign)
-/extension/dist
-
 # vercel
 .vercel
 

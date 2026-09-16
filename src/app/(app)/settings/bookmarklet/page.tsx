@@ -45,11 +45,7 @@ export default function BookmarkletPage() {
       <p className="text-xs text-muted-foreground">
         This relies on you already being signed in to Job Tracker in this browser. Note: browsers
         show a generic icon for this in your bookmarks bar, since a <code>javascript:</code> link
-        has no page to fetch a favicon from — see the{" "}
-        <a href="/settings/extension" className="underline">
-          browser extension
-        </a>{" "}
-        if you&apos;d rather have a real toolbar icon.
+        has no page to fetch a favicon from.
       </p>
     </div>
   );

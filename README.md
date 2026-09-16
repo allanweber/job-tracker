@@ -59,18 +59,13 @@ Both providers need their callback URL set to:
 The bucket stays private — the app only ever hands out short-lived presigned
 upload/download URLs.
 
-## Quick-add: bookmarklet & browser extension
+## Quick-add: bookmarklet
 
-Two ways to capture a job listing without switching to the app first, both opening the same
-`/quick-add` popup pre-filled with the current page's URL — set up from `/settings/bookmarklet`
-and `/settings/extension` respectively once the app is running.
-
-- **Bookmarklet** — zero install, but browsers can't show a custom favicon for a `javascript:`
-  bookmark (there's no page to fetch an icon from), so it shows a generic icon in the bookmarks
-  bar.
-- **Browser extension** (`extension/`) — same popup, as a real toolbar button with the app's
-  actual icon. Not published to any store; loaded unpacked (`chrome://extensions` → Developer
-  mode → Load unpacked → select `extension/`). See `extension/README.md`.
+Capture a job listing without switching to the app first — drag the bookmarklet from
+`/settings/bookmarklet` (once the app is running) to your bookmarks bar. Clicking it on a job
+listing page opens the same `/quick-add` popup pre-filled with the current page's URL. Browsers
+can't show a custom favicon for a `javascript:` bookmark (there's no page to fetch an icon
+from), so it shows a generic icon in the bookmarks bar.
 
 ## Testing
 

@@ -4,9 +4,9 @@ import { QuickAddClient } from "@/components/jobs/quick-add-client";
 /**
  * Deliberately its own top-level route rather than living under `(app)`:
  * it needs to render *without* that layout's nav header so it fits the
- * small popup window the bookmarklet/extension opens it in (see
- * `settings/bookmarklet/page.tsx` and `extension/background.js`). Still
- * requires auth like everything else — `requireUser()` redirects to
+ * small popup window the bookmarklet opens it in (see
+ * `settings/bookmarklet/page.tsx`). Still requires auth like everything
+ * else — `requireUser()` redirects to
  * `/login` the same way, which is how signed-out visits here get prompted
  * to sign in before anything can be saved. It passes its own path (url
  * param included) through as `requireUser`'s `redirectTo`, so signing in
