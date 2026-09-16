@@ -6,11 +6,11 @@ import { QuickAddClient } from "@/components/jobs/quick-add-client";
  * it needs to render *without* that layout's nav header so it fits the
  * small popup window the bookmarklet opens it in (see
  * `settings/bookmarklet/page.tsx`). Still requires auth like everything
- * else — `requireUser()` redirects to
- * `/login` the same way, which is how signed-out visits here get prompted
- * to sign in before anything can be saved. It passes its own path (url
- * param included) through as `requireUser`'s `redirectTo`, so signing in
- * lands back on this same quick-add popup instead of the dashboard.
+ * else — `requireUser()` redirects to the landing page the same way, which
+ * is how signed-out visits here get prompted to sign in before anything
+ * can be saved. It passes its own path (url param included) through as
+ * `requireUser`'s `redirectTo`, so signing in lands back on this same
+ * quick-add popup instead of the dashboard.
  */
 export default async function QuickAddPage({
   searchParams,

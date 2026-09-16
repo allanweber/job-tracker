@@ -13,7 +13,7 @@ export function SignOutButton() {
       size="sm"
       onClick={async () => {
         await authClient.signOut();
-        router.push("/login");
+        router.push("/");
         router.refresh();
       }}
     >
