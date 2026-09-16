@@ -13,8 +13,8 @@ function buildBookmarklet(origin: string) {
   // short-lived.
   const js = `(function(){
     var u='${origin}/quick-add?url='+encodeURIComponent(location.href);
-    var w=Math.min(480,screen.width-40);
-    var h=Math.min(720,screen.height-80);
+    var w=Math.min(420,screen.width-40);
+    var h=Math.min(600,screen.height-80);
     var l=Math.round((screen.width-w)/2);
     var t=Math.round((screen.height-h)/2);
     window.open(u,'job-tracker-quick-add','popup=1,width='+w+',height='+h+',left='+l+',top='+t+',noopener');
@@ -43,7 +43,13 @@ export default function BookmarkletPage() {
         </p>
       </div>
       <p className="text-xs text-muted-foreground">
-        This relies on you already being signed in to Job Tracker in this browser.
+        This relies on you already being signed in to Job Tracker in this browser. Note: browsers
+        show a generic icon for this in your bookmarks bar, since a <code>javascript:</code> link
+        has no page to fetch a favicon from — see the{" "}
+        <a href="/settings/extension" className="underline">
+          browser extension
+        </a>{" "}
+        if you&apos;d rather have a real toolbar icon.
       </p>
     </div>
   );

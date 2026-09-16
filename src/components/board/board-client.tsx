@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,25 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
   const [importErrors, setImportErrors] = useState<ImportError[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Jobs saved via the bookmarklet/extension happen on /quick-add, a
+  // *different* tab or popup window from this one — the server action there
+  // revalidates the "/board" cache, but that doesn't push anything into an
+  // already-open board tab. Instead, refresh whenever this tab regains focus
+  // (the common case: the quick-add popup closes and hands focus back here)
+  // or becomes visible again (switching back to this tab), so the newly
+  // saved job shows up without the user having to reload manually.
+  useEffect(() => {
+    function refresh() {
+      if (document.visibilityState === "visible") router.refresh();
+    }
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [router]);
 
   // Keep local state in sync whenever the server sends fresh data (e.g. after
   // a job was added/edited/deleted through the add/edit modal). Adjusting

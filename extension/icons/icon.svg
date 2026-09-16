@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!--
+    Same kanban-columns mark as src/app/icon.tsx (the web favicon) — three
+    bars of rising height, echoing the board's Applied → Interview → Offer
+    pipeline. Kept here as a plain SVG (rather than reusing the ImageResponse
+    component) because extension icons must be static PNG files declared in
+    manifest.json, not a Next.js route. Regenerate the PNGs with
+    extension/icons/generate.sh after editing this file.
+  -->
+  <rect x="0" y="0" width="32" height="32" rx="7" ry="7" fill="#111113" />
+  <rect x="5.5" y="14" width="5" height="12" rx="1.5" ry="1.5" fill="#fafafa" />
+  <rect x="13.5" y="6" width="5" height="20" rx="1.5" ry="1.5" fill="#fafafa" />
+  <rect x="21.5" y="10" width="5" height="16" rx="1.5" ry="1.5" fill="#fafafa" />
+</svg>
