@@ -50,35 +50,16 @@ const FEATURES = [
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    quote:
-      "I went from a chaos of browser tabs to an actual pipeline. The URL auto-fill alone saved me hours over a two-month search.",
-    name: "Marina T.",
-    role: "Backend Engineer",
-  },
-  {
-    quote:
-      "The follow-up reminders are the whole product for me. I stopped letting promising conversations go cold after a week of silence.",
-    name: "Devon R.",
-    role: "Product Designer",
-  },
-  {
-    quote:
-      "Switching between the board and list view depending on whether I'm triaging or reviewing everything at once is exactly right.",
-    name: "Priya K.",
-    role: "Data Analyst",
-  },
-];
-
 function Screenshot({
   src,
   alt,
   className,
+  priority,
 }: {
   src: string;
   alt: string;
   className?: string;
+  priority?: boolean;
 }) {
   return (
     <div
@@ -90,7 +71,14 @@ function Screenshot({
         <span className="size-2.5 rounded-full bg-[#28c840]" />
       </div>
       <div className="relative aspect-[1440/760] w-full">
-        <Image src={src} alt={alt} fill sizes="(min-width: 1024px) 900px, 100vw" className="object-cover object-top" />
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes="(min-width: 1024px) 900px, 100vw"
+          className="object-cover object-top"
+          priority={priority}
+        />
       </div>
     </div>
   );
@@ -102,7 +90,13 @@ export function LandingPage({ redirectTo }: { redirectTo?: string }) {
       <header className="border-b">
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-4 px-5 py-3.5">
           <span className="text-[15px] font-semibold">Job Tracker</span>
-          <Button render={<Link href="#signin" />} nativeButton={false} size="sm" variant="outline">
+          <Button
+            render={<Link href="#signin" />}
+            nativeButton={false}
+            size="sm"
+            variant="outline"
+            className="h-11 sm:h-9"
+          >
             Sign in
           </Button>
         </div>
@@ -128,7 +122,11 @@ export function LandingPage({ redirectTo }: { redirectTo?: string }) {
             </Button>
           </div>
           <div className="mt-6 w-full max-w-4xl">
-            <Screenshot src="/marketing/board-columns.png" alt="Job Tracker kanban board with applications across five pipeline stages" />
+            <Screenshot
+              src="/marketing/board-columns.png"
+              alt="Job Tracker kanban board with applications across five pipeline stages"
+              priority
+            />
           </div>
         </section>
 
@@ -202,27 +200,6 @@ export function LandingPage({ redirectTo }: { redirectTo?: string }) {
                 </p>
               </div>
               <Screenshot src="/marketing/documents.png" alt="Job Tracker documents page listing uploaded resumes and cover letters" />
-            </div>
-          </div>
-        </section>
-
-        <section className="border-t bg-muted/20">
-          <div className="mx-auto max-w-[1100px] px-5 py-16">
-            <h2 className="mb-10 text-center text-2xl font-semibold tracking-tight sm:text-3xl">
-              Built for people deep in a search
-            </h2>
-            <div className="grid gap-5 sm:grid-cols-3">
-              {TESTIMONIALS.map((t) => (
-                <figure key={t.name} className="flex flex-col rounded-xl border bg-card p-5">
-                  <blockquote className="flex-1 text-sm text-foreground">
-                    “{t.quote}”
-                  </blockquote>
-                  <figcaption className="mt-4 text-sm">
-                    <span className="font-semibold">{t.name}</span>
-                    <span className="text-muted-foreground"> — {t.role}</span>
-                  </figcaption>
-                </figure>
-              ))}
             </div>
           </div>
         </section>

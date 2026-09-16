@@ -16,8 +16,8 @@ export default async function AppLayout({
       <header className="border-b">
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-4 px-5 py-3.5">
           <NavLinks />
-          <div className="flex items-center gap-3.5 text-sm text-muted-foreground">
-            <span>{user.email}</span>
+          <div className="flex min-w-0 items-center gap-3.5 text-sm text-muted-foreground">
+            <span className="hidden truncate sm:inline">{user.email}</span>
             <SignOutButton />
           </div>
         </div>
