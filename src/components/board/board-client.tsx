@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AddJobBox } from "@/components/jobs/add-job-box";
 import { PipelineStats } from "@/components/board/pipeline-stats";
 import { KanbanBoard } from "@/components/board/kanban-board";
@@ -124,28 +126,6 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
           onChange={(e) => setQuery(e.target.value)}
           className="min-w-56 flex-1"
         />
-        <Button type="button" variant="outline" size="sm" onClick={handleDownloadTemplate}>
-          Template
-        </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-          className="hidden"
-          onChange={handleImportFile}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={importing}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {importing ? "Importing…" : "Import"}
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={handleExport}>
-          Export
-        </Button>
         <div className="flex overflow-hidden rounded-lg border">
           <button
             type="button"
@@ -168,10 +148,50 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
             List
           </button>
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+          className="hidden"
+          onChange={handleImportFile}
+        />
+        <Popover>
+          <PopoverTrigger
+            render={<Button variant="outline" size="icon-sm" aria-label="More actions" />}
+          >
+            <MoreHorizontal className="size-4" />
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-44 p-1.5">
+            <div className="flex flex-col">
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="rounded-md px-2.5 py-2 text-left text-sm hover:bg-muted"
+              >
+                Download template
+              </button>
+              <button
+                type="button"
+                disabled={importing}
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-md px-2.5 py-2 text-left text-sm hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+              >
+                {importing ? "Importing…" : "Import"}
+              </button>
+              <button
+                type="button"
+                onClick={handleExport}
+                className="rounded-md px-2.5 py-2 text-left text-sm hover:bg-muted"
+              >
+                Export
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {view === "list" ? (
-        <JobListView jobs={visibleJobs} onDeleted={handleDeleted} />
+        <JobListView jobs={visibleJobs} isFiltered={query.trim().length > 0} onDeleted={handleDeleted} />
       ) : (
         <KanbanBoard jobs={visibleJobs} setJobs={setJobs} onDeleted={handleDeleted} />
       )}

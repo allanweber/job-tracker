@@ -8,15 +8,21 @@ import type { JobWithTags } from "@/server/db/queries/jobs";
 
 export function JobListView({
   jobs,
+  isFiltered,
   onDeleted,
 }: {
   jobs: JobWithTags[];
+  /** Whether `jobs` reflects an active search, so the empty state can tell
+   * "nothing matches" apart from "nothing added yet". */
+  isFiltered: boolean;
   onDeleted: (id: string) => void;
 }) {
   if (jobs.length === 0) {
     return (
       <div className="rounded-lg border">
-        <p className="p-4 text-sm text-muted-foreground">No jobs match.</p>
+        <p className="p-4 text-sm text-muted-foreground">
+          {isFiltered ? "No jobs match your search." : "No jobs yet — add your first application above."}
+        </p>
       </div>
     );
   }

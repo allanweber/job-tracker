@@ -36,18 +36,11 @@ const FEATURES = [
     description:
       "Upload resumes and cover letters once, then attach the right version to each application from a dropdown.",
   },
-  {
-    icon: ArrowRightLeft,
-    title: "Import and export freely",
-    description:
-      "Bring in a spreadsheet you already track applications in, or export everything to CSV/XLSX whenever you want a copy.",
-  },
-  {
-    icon: Bookmark,
-    title: "Bookmarklet quick-add",
-    description:
-      "Drag one link to your bookmarks bar and capture a listing straight from the job posting page — no tab switching.",
-  },
+];
+
+const MORE_FEATURES = [
+  { icon: ArrowRightLeft, label: "Import and export via CSV/XLSX" },
+  { icon: Bookmark, label: "Bookmarklet quick-add from any posting" },
 ];
 
 function Screenshot({
@@ -117,6 +110,9 @@ export function LandingPage({ redirectTo }: { redirectTo?: string }) {
           </p>
           <div id="signin" className="flex scroll-mt-20 flex-col items-center gap-3">
             <SignInButtons redirectTo={redirectTo} />
+            <p className="text-xs text-muted-foreground">
+              Used only to sign you in — nothing is posted on your behalf.
+            </p>
             <Button render={<Link href="#features" />} nativeButton={false} variant="ghost" size="sm">
               See how it works
             </Button>
@@ -141,7 +137,7 @@ export function LandingPage({ redirectTo }: { redirectTo?: string }) {
                 and start tracking.
               </p>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {FEATURES.map(({ icon: Icon, title, description }) => (
                 <div key={title} className="rounded-xl border bg-card p-5">
                   <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-foreground text-background">
@@ -150,6 +146,14 @@ export function LandingPage({ redirectTo }: { redirectTo?: string }) {
                   <h3 className="mb-1.5 text-[15px] font-semibold">{title}</h3>
                   <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+              {MORE_FEATURES.map(({ icon: Icon, label }) => (
+                <span key={label} className="inline-flex items-center gap-1.5">
+                  <Icon className="size-4" />
+                  {label}
+                </span>
               ))}
             </div>
           </div>
@@ -213,6 +217,9 @@ export function LandingPage({ redirectTo }: { redirectTo?: string }) {
             under a minute.
           </p>
           <SignInButtons redirectTo={redirectTo} />
+          <p className="text-xs text-muted-foreground">
+            Used only to sign you in — nothing is posted on your behalf.
+          </p>
         </section>
       </main>
 

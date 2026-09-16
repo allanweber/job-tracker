@@ -11,16 +11,18 @@ export function KanbanColumn({
   label,
   jobs,
   onDeleted,
+  className,
 }: {
   stage: Stage;
   label: string;
   jobs: JobWithTags[];
   onDeleted: (id: string) => void;
+  className?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage, data: { stage } });
 
   return (
-    <div className="flex min-w-0 flex-col gap-2">
+    <div className={`flex min-w-0 flex-col gap-2 ${className ?? ""}`}>
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">
           <span

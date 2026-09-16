@@ -50,13 +50,15 @@ export function JobCard({
       <CardHeader className="px-3 pr-8">
         <Link
           href={`/jobs/${job.id}`}
-          className="font-medium leading-tight hover:underline"
+          className="truncate font-medium leading-tight hover:underline"
           // Avoid the drag listeners hijacking a plain click on the title.
           onClick={(e) => e.stopPropagation()}
         >
-          {job.companyName || "Unknown company"}
+          {job.positionName || "Untitled position"}
         </Link>
-        <p className="text-sm text-muted-foreground">{job.positionName || "Untitled position"}</p>
+        <p className="truncate text-sm text-muted-foreground">
+          {job.companyName || "Unknown company"}
+        </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 px-3">
         <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">

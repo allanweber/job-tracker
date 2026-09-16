@@ -149,7 +149,7 @@ export function KanbanBoard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-5 gap-3">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0 lg:pb-0">
         {STAGES.map((stage) => (
           <KanbanColumn
             key={stage}
@@ -157,6 +157,7 @@ export function KanbanBoard({
             label={STAGE_LABELS[stage]}
             jobs={groups[stage]}
             onDeleted={onDeleted}
+            className="w-[78vw] shrink-0 snap-start sm:w-72 lg:w-auto lg:shrink"
           />
         ))}
       </div>
