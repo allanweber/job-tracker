@@ -142,7 +142,12 @@ export function QuickAddSummary({
 
   const actions = (
     <div className="mt-1 flex gap-2">
-      <Button type="submit" disabled={pending || scrape === "loading"} className="flex-1">
+      <Button
+        type="submit"
+        variant="cta"
+        disabled={pending || scrape === "loading"}
+        className="flex-1"
+      >
         {pending ? "Saving…" : "Save"}
       </Button>
       <Button

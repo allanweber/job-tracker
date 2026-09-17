@@ -43,7 +43,7 @@ function computeRate(jobs: JobWithTags[], predicate: (job: JobWithTags) => boole
     fraction: `${num} of ${total}`,
     ring:
       total && pct > 0
-        ? `conic-gradient(var(--foreground) ${pct}%, var(--muted) 0)`
+        ? `conic-gradient(var(--cta) ${pct}%, var(--muted) 0)`
         : "var(--muted)",
   };
 }

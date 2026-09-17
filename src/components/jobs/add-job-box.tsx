@@ -19,7 +19,12 @@ export function AddJobBox() {
 
   return (
     <div className="flex flex-wrap items-center gap-2.5 rounded-lg border bg-muted/40 px-3.5 py-3">
-      <Button type="button" onClick={() => router.push("/jobs/new")} className="shrink-0">
+      <Button
+        type="button"
+        variant="cta"
+        onClick={() => router.push("/jobs/new")}
+        className="shrink-0"
+      >
         + Add new job
       </Button>
       <span className="shrink-0 text-xs text-muted-foreground">

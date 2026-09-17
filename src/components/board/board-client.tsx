@@ -132,7 +132,7 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
             onClick={() => setView("columns")}
             className={cn(
               "px-3.5 py-1.5 text-[13px] font-medium",
-              view === "columns" ? "bg-muted" : "bg-transparent hover:bg-muted/50",
+              view === "columns" ? "bg-cta text-cta-foreground" : "bg-transparent hover:bg-muted/50",
             )}
           >
             Columns
@@ -142,7 +142,7 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
             onClick={() => setView("list")}
             className={cn(
               "border-l px-3.5 py-1.5 text-[13px] font-medium",
-              view === "list" ? "bg-muted" : "bg-transparent hover:bg-muted/50",
+              view === "list" ? "bg-cta text-cta-foreground" : "bg-transparent hover:bg-muted/50",
             )}
           >
             List

@@ -54,10 +54,10 @@ export function JobCard({
           // Avoid the drag listeners hijacking a plain click on the title.
           onClick={(e) => e.stopPropagation()}
         >
-          {job.positionName || "Untitled position"}
+          {job.companyName || "Unknown company"}
         </Link>
         <p className="truncate text-sm text-muted-foreground">
-          {job.companyName || "Unknown company"}
+          {job.positionName || "Untitled position"}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 px-3">

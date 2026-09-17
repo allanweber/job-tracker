@@ -338,7 +338,7 @@ export function JobReviewForm({
       </Tabs>
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" variant="cta" disabled={pending}>
           {pending ? "Saving…" : "Save job"}
         </Button>
         {onClose && (

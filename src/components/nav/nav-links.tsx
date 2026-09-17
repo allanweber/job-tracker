@@ -32,7 +32,7 @@ export function NavLinks() {
             href={href}
             className={
               pathname.startsWith(href)
-                ? "text-foreground"
+                ? "text-cta"
                 : "text-muted-foreground hover:text-foreground"
             }
           >
@@ -62,7 +62,7 @@ export function NavLinks() {
                 href={href}
                 className={`flex h-11 items-center rounded-md px-3 text-sm ${
                   pathname.startsWith(href)
-                    ? "bg-muted text-foreground"
+                    ? "bg-muted text-cta"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
