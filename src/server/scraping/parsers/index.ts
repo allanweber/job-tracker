@@ -3,6 +3,7 @@ import { isSufficient } from "../types";
 import { jsonLdJobPostingParser } from "./json-ld-jobposting";
 import { linkedInParser } from "./linkedin";
 import { remotarParser } from "./remotar";
+import { greenhouseParser } from "./greenhouse";
 import { openGraphFallbackParser } from "./opengraph-fallback";
 
 /** Ordered: most structured/reliable first, generic fallback last. */
@@ -10,6 +11,7 @@ export const parsers: JobParser[] = [
   jsonLdJobPostingParser,
   linkedInParser,
   remotarParser,
+  greenhouseParser,
   openGraphFallbackParser,
 ];
 
