@@ -1,17 +1,61 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/server/db";
-import { jobs } from "@/server/db/schema";
+import { jobs, jobStageHistory } from "@/server/db/schema";
 import { requireUser } from "@/server/auth/session";
 import { jobFormSchema } from "@/lib/validation/job.schema";
 import { syncJobTags } from "@/server/db/queries/tags";
 import { nextTopBoardOrder } from "@/server/db/queries/jobs";
-import type { Stage } from "@/lib/constants";
+import { STAGE_ORDER, normalizeStage, type Stage } from "@/lib/constants";
 
 function toNullable<T>(v: T | undefined): T | null {
   return v === undefined || v === "" ? null : v;
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Stages have a linear order — applied → interviewing → offer → rejected —
+ * with "no_answer" standing apart from it entirely. Moving forward along
+ * the ladder logs every rung passed through, not just the destination
+ * (applied straight to offer logs interviewing too, since the application
+ * did pass through it). Moving backward means the rungs above where it
+ * lands were wrong, so those history rows are deleted rather than left as
+ * stale noise. "no_answer" doesn't participate in any of that: reaching it
+ * means whatever ladder progress existed no longer matters, so history
+ * resets back to just "applied" plus this event; leaving it behaves like a
+ * fresh single move to wherever it's going next.
+ */
+async function recordStageChange(tx: Tx, jobId: string, fromStage: Stage, toStage: Stage) {
+  // A no-op transition must never touch history — every caller is expected
+  // to already guard this, but this makes it a hard invariant of the
+  // function itself rather than trusting every call site forever.
+  if (fromStage === toStage) return;
+
+  if (toStage === "no_answer" || fromStage === "no_answer") {
+    if (toStage === "no_answer") {
+      await tx
+        .delete(jobStageHistory)
+        .where(and(eq(jobStageHistory.jobId, jobId), ne(jobStageHistory.stage, "applied")));
+    }
+    await tx.insert(jobStageHistory).values({ jobId, stage: toStage });
+    return;
+  }
+
+  const fromIndex = STAGE_ORDER.indexOf(fromStage);
+  const toIndex = STAGE_ORDER.indexOf(toStage);
+
+  if (toIndex > fromIndex) {
+    const passedThrough = STAGE_ORDER.slice(fromIndex + 1, toIndex + 1);
+    await tx.insert(jobStageHistory).values(passedThrough.map((stage) => ({ jobId, stage })));
+  } else {
+    const invalidated = STAGE_ORDER.slice(toIndex + 1);
+    await tx
+      .delete(jobStageHistory)
+      .where(and(eq(jobStageHistory.jobId, jobId), inArray(jobStageHistory.stage, invalidated)));
+  }
 }
 
 export async function saveJob(values: unknown) {
@@ -65,6 +109,9 @@ export async function saveJob(values: unknown) {
         .returning({ id: jobs.id });
       if (!row) throw new Error("Job not found");
       await syncJobTags(tx, user.id, row.id, parsed.tags);
+      if (stageChanged) {
+        await recordStageChange(tx, row.id, normalizeStage(existing.stage), parsed.stage);
+      }
       return row.id;
     }
 
@@ -74,6 +121,7 @@ export async function saveJob(values: unknown) {
       .values({ ...jobValues, stage: "applied", boardOrder })
       .returning({ id: jobs.id });
     await syncJobTags(tx, user.id, row.id, parsed.tags);
+    await tx.insert(jobStageHistory).values({ jobId: row.id, stage: "applied" });
     return row.id;
   });
 
@@ -89,10 +137,25 @@ export async function saveJob(values: unknown) {
 
 export async function moveJob(jobId: string, next: { stage: Stage; boardOrder: number }) {
   const user = await requireUser();
-  await db
-    .update(jobs)
-    .set({ stage: next.stage, boardOrder: next.boardOrder, updatedAt: new Date() })
-    .where(and(eq(jobs.id, jobId), eq(jobs.userId, user.id)));
+  await db.transaction(async (tx) => {
+    // dnd-kit calls this both for an actual column change and for a plain
+    // reorder within the same column — only the former is a real stage
+    // transition worth logging, so read the current stage first.
+    const [existing] = await tx
+      .select({ stage: jobs.stage })
+      .from(jobs)
+      .where(and(eq(jobs.id, jobId), eq(jobs.userId, user.id)));
+    if (!existing) return;
+
+    await tx
+      .update(jobs)
+      .set({ stage: next.stage, boardOrder: next.boardOrder, updatedAt: new Date() })
+      .where(and(eq(jobs.id, jobId), eq(jobs.userId, user.id)));
+
+    if (existing.stage !== next.stage) {
+      await recordStageChange(tx, jobId, normalizeStage(existing.stage), next.stage);
+    }
+  });
   revalidatePath("/board");
 }
 

@@ -28,6 +28,9 @@ function job(overrides: Partial<JobWithTags> = {}): JobWithTags {
     createdAt: new Date("2026-09-01T00:00:00.000Z"),
     updatedAt: new Date("2026-09-01T00:00:00.000Z"),
     tags: ["dream-job"],
+    stageCount: 1,
+    reachedStages: ["applied"],
+    stagePath: ["applied"],
     ...overrides,
   };
 }

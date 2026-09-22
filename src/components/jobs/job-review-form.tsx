@@ -16,7 +16,15 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsPanel } from "@/components/ui/tabs";
 import { TagInput } from "@/components/jobs/tag-input";
 import { FileField } from "@/components/jobs/file-field";
-import { STAGES, STAGE_LABELS, WORK_MODES, WORK_MODE_LABELS, SALARY_PERIODS } from "@/lib/constants";
+import {
+  STAGES,
+  STAGE_LABELS,
+  STAGE_COLORS,
+  WORK_MODES,
+  WORK_MODE_LABELS,
+  SALARY_PERIODS,
+  type Stage,
+} from "@/lib/constants";
 import { saveJob } from "@/server/actions/jobs";
 import { jobFormSchema, type JobFormValues } from "@/lib/validation/job.schema";
 import type { documents } from "@/server/db/schema";
@@ -30,11 +38,15 @@ export function JobReviewForm({
   initialValues,
   documents: docs,
   scrapeBanner,
+  stageHistory,
   onClose,
 }: {
   initialValues: Partial<FormState> & { sourceUrl: string };
   documents: (typeof documents.$inferSelect)[];
   scrapeBanner?: { tone: "warning" | "info"; message: string } | null;
+  /** Chronological (oldest first) log of stage transitions — only meaningful
+   * once a job exists, so omitted for the new-job form. */
+  stageHistory?: { stage: Stage; changedAt: Date }[];
   /**
    * Called both to cancel and after a successful save. How to navigate away
    * differs by context (a plain `router.push` won't close the add/edit
@@ -171,6 +183,30 @@ export function JobReviewForm({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {values.id && stageHistory && stageHistory.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label>History</Label>
+              <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+                {stageHistory.map((entry, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: STAGE_COLORS[entry.stage] }}
+                    />
+                    <span className="text-foreground">{STAGE_LABELS[entry.stage]}</span>
+                    <span>
+                      {entry.changedAt.toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

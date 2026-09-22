@@ -75,6 +75,19 @@ export const jobs = pgTable(
   (t) => [index("jobs_user_stage_idx").on(t.userId, t.stage)],
 );
 
+export const jobStageHistory = pgTable(
+  "job_stage_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    stage: stageEnum("stage").notNull(),
+    changedAt: timestamp("changed_at").notNull().defaultNow(),
+  },
+  (t) => [index("job_stage_history_job_idx").on(t.jobId, t.changedAt)],
+);
+
 export const tags = pgTable(
   "tags",
   {

@@ -68,6 +68,11 @@ export function JobCard({
               {WORK_MODE_LABELS[job.workMode]}
             </Badge>
           )}
+          {job.stageCount > 1 && (
+            <Badge variant="outline" className="text-xs">
+              {job.stageCount} stages
+            </Badge>
+          )}
         </div>
         {salary && <p className="text-xs text-muted-foreground">{salary}</p>}
         {job.skills.length > 0 && (

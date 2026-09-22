@@ -33,7 +33,12 @@ export function JobEditModal({
         />
       }
     >
-      <JobReviewForm initialValues={job} documents={docs} onClose={close} />
+      <JobReviewForm
+        initialValues={job}
+        documents={docs}
+        stageHistory={job.stageHistory}
+        onClose={close}
+      />
     </JobFormModal>
   );
 }

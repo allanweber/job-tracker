@@ -29,7 +29,12 @@ export function JobDetailClient({
           variant="button"
         />
       </div>
-      <JobReviewForm initialValues={job} documents={docs} onClose={close} />
+      <JobReviewForm
+        initialValues={job}
+        documents={docs}
+        stageHistory={job.stageHistory}
+        onClose={close}
+      />
     </div>
   );
 }

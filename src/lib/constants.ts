@@ -21,6 +21,18 @@ export const STAGE_COLORS: Record<Stage, string> = {
   no_answer: "#6b7280",
 };
 
+/** Linear ladder a job climbs (or falls back down) through. "no_answer" is
+ * deliberately excluded — it's a standalone outcome, not a rung on this
+ * ladder (see `recordStageChange` in server/actions/jobs.ts, which is what
+ * actually uses this ordering to decide what stage-history to add/remove). */
+export const STAGE_ORDER: Stage[] = ["applied", "interviewing", "offer", "rejected"];
+
+/** The DB `stage` column still allows a legacy "wishlist" value the app no
+ * longer surfaces — treat it as "applied" everywhere it's read. */
+export function normalizeStage(stage: string): Stage {
+  return stage === "wishlist" ? "applied" : (stage as Stage);
+}
+
 export const WORK_MODES = ["remote", "hybrid", "onsite"] as const;
 export type WorkMode = (typeof WORK_MODES)[number];
 
