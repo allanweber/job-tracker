@@ -197,13 +197,24 @@ function RateCard({
 }) {
   const offset = RING_CIRCUMFERENCE * (1 - rate.pct / 100);
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[10px] border p-5">
-      <div>
+    <div className="flex flex-1 flex-col items-center gap-3 rounded-[10px] border p-5">
+      <div className="w-full text-center">
         <div className="text-[13px] font-semibold">{label}</div>
         <div className="text-xs text-muted-foreground">{rate.fraction} applications</div>
       </div>
-      <div className="relative flex size-16 shrink-0 items-center justify-center">
-        <svg viewBox="0 0 64 64" className="size-16 -rotate-90">
+      {/* `flex-1` grows this to whatever vertical room the card has beyond
+       * its label. The svg is `absolute inset-0` rather than `h-full
+       * w-full` — an in-flow child sized by a height *percentage* has no
+       * resolvable size while this wrapper's own height is still being
+       * measured (flex-basis 0 + grow), so the browser falls back to a
+       * default replaced-element size (~300px) during that measurement
+       * pass, ballooning this card (and, via grid stretch, the whole row)
+       * to match. Taking it out of flow means it can't feed back into
+       * that measurement at all — it just fills whatever box the wrapper
+       * ends up with once real layout runs, via its default
+       * `preserveAspectRatio`, without distortion or overflow. */}
+      <div className="relative min-h-0 w-full flex-1">
+        <svg viewBox="0 0 64 64" className="absolute inset-0 size-full -rotate-90">
           <circle cx="32" cy="32" r={RING_RADIUS} fill="none" stroke="var(--muted)" strokeWidth="6" />
           <circle
             cx="32"
@@ -217,7 +228,9 @@ function RateCard({
             strokeDashoffset={offset}
           />
         </svg>
-        <span className="absolute text-[13px] font-semibold">{rate.pctLabel}</span>
+        <span className="absolute inset-0 flex items-center justify-center text-lg font-semibold">
+          {rate.pctLabel}
+        </span>
       </div>
     </div>
   );
