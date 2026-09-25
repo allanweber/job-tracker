@@ -1,6 +1,20 @@
+"use client";
+
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { sankey, sankeyLeft } from "d3-sankey";
 import { STAGE_COLORS, STAGE_LABELS, STAGE_ORDER, type Stage } from "@/lib/constants";
 import type { JobWithTags } from "@/server/db/queries/jobs";
+
+/** Transition used for every animated geometry change in the chart (ribbon
+ * shape, node height, label position) so a drag-and-drop stage change (or
+ * any other data update) morphs smoothly instead of snapping. A plain eased
+ * tween, not a spring: a spring's overshoot looks natural for something
+ * physically bouncing into place, but here it's numerically reinterpolating
+ * bezier control points, so overshoot briefly renders an invalid-looking
+ * pinched/overextended ribbon instead of a bounce — a flat ease-out settles
+ * without ever overshooting. */
+const FLOW_TRANSITION = { type: "tween", ease: "easeOut", duration: 0.4 } as const;
 
 const ROW_HEIGHT = 60;
 const COLUMN_WIDTH = 250;
@@ -13,6 +27,20 @@ const LABEL_HEIGHT = 38;
  * label sitting on ITS outer (right) side — instead of overlapping the
  * ribbons that immediately follow it. */
 const LEFT_MARGIN = LABEL_WIDTH;
+/** How far each ribbon's bezier control points sit from their own end,
+ * as a fraction of the horizontal gap between nodes. 0 draws a straight
+ * diagonal line; 0.5 is the standard symmetric S-curve; pushing it higher
+ * holds the ribbon flatter near each node before it swoops through the
+ * middle, reading as a more pronounced curve. */
+const CURVATURE = 0.65;
+/** Decorative sag applied to a ribbon's control points, in px, so a link
+ * between two nodes at the *same* row height still reads as a curve
+ * instead of a flat rectangle — a bezier has nothing to bend through when
+ * y0 equals y1, regardless of CURVATURE. Fades out as the link's own real
+ * vertical drop grows, since a link that already travels between rows
+ * gets plenty of curve from CURVATURE alone and doesn't need help. */
+const BOW_AMOUNT = 18;
+const BOW_FADE_DISTANCE = ROW_HEIGHT;
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
@@ -36,40 +64,39 @@ function ribbonPath(link: {
 }): string {
   const x0 = link.source.x1;
   const x1 = link.target.x0;
-  const xc0 = lerp(x0, x1, 0.5);
-  const xc1 = lerp(x1, x0, 0.5);
+  const xc0 = lerp(x0, x1, CURVATURE);
+  const xc1 = lerp(x1, x0, CURVATURE);
   const half = link.width / 2;
+
+  const bow = BOW_AMOUNT * Math.max(0, 1 - Math.abs(link.y1 - link.y0) / BOW_FADE_DISTANCE);
+  const controlY0 = link.y0 + bow;
+  const controlY1 = link.y1 + bow;
+
   const topY0 = link.y0 - half;
   const topY1 = link.y1 - half;
   const botY0 = link.y0 + half;
   const botY1 = link.y1 + half;
-  return `M${x0},${topY0} C${xc0},${topY0} ${xc1},${topY1} ${x1},${topY1} L${x1},${botY1} C${xc1},${botY1} ${xc0},${botY0} ${x0},${botY0} Z`;
+  const topC0 = controlY0 - half;
+  const topC1 = controlY1 - half;
+  const botC0 = controlY0 + half;
+  const botC1 = controlY1 + half;
+  return `M${x0},${topY0} C${xc0},${topC0} ${xc1},${topC1} ${x1},${topY1} L${x1},${botY1} C${xc1},${botC1} ${xc0},${botC0} ${x0},${botY0} Z`;
 }
-
-/** Jobs that haven't moved past a stage yet aren't a real `Stage` value —
- * they're still *at* whatever stage their parent node already represents,
- * so labeling their node with that same stage name would just print the
- * same word twice in a row. "In Progress" is a chart-only marker for that
- * "no outcome yet" leaf; it never flows into `Stage`-typed data anywhere
- * else (form selects, filters, `recordStageChange`, ...). */
-type FlowStage = Stage | "in_progress";
 
 interface FlowNode {
   id: string;
-  stage: FlowStage;
-  /** The real stage a node's color comes from. For a real-stage node this
-   * is just its own `stage` — but "In Progress" is a display-only label,
-   * not a real stage (see `FlowStage`), so it still needs to borrow the
-   * color of whatever stage its jobs are actually still sitting at, rather
-   * than getting an arbitrary neutral color of its own. */
-  colorStage: Stage;
+  stage: Stage;
   label: string;
-  count: number;
+  /** The jobs that reached this node — its count is `jobs.length`, and
+   * hovering/clicking the node or its incoming ribbon lists these by name
+   * in the tooltip. Since the flow is a tree, a node's incoming ribbon
+   * carries exactly this same cohort, so links don't need their own copy. */
+  jobs: JobWithTags[];
   depth: number;
 }
 
 function colorFor(node: FlowNode): string {
-  return STAGE_COLORS[node.colorStage];
+  return STAGE_COLORS[node.stage];
 }
 
 interface FlowLink {
@@ -92,56 +119,61 @@ function isTerminal(stage: Stage): boolean {
  * sequence — see `recordStageChange` in server/actions/jobs.ts) into a
  * Sankey graph, rooted at "applied" since every job starts there: at every
  * non-terminal stage, jobs that moved on split off into a branch per stage
- * they moved *to*, and jobs that haven't moved any further collapse into an
- * "In Progress" leaf for that stage. Recursing only into the "moved on"
- * branches (and never past a terminal stage) is what gives branches like
- * "Rejected"/"No Answer" no further columns while "Interviewing"/"Offer"
- * keep splitting — driven entirely by what actually happened, not a fixed
- * chart shape.
+ * they moved *to*. Jobs that haven't moved any further stay folded into
+ * whichever node they last reached — that node's own incoming link count
+ * already includes them, so there's nothing further to draw for them.
+ * Recursing only into stages jobs actually moved to (and never past a
+ * terminal stage) is what gives branches like "Rejected"/"No Answer" no
+ * further columns while "Interviewing"/"Offer" keep splitting — driven
+ * entirely by what actually happened, not a fixed chart shape.
+ *
+ * A node's id is its full root-to-node stage path (e.g.
+ * "applied>interviewing>offer"), not a render-order index — that's what
+ * lets the chart animate: the same real-world branch keeps the same id
+ * across renders (React/motion match it to the same element and tween its
+ * geometry) even as *other* branches gain or lose jobs and shuffle the
+ * traversal order.
  */
 function buildFlow(jobs: JobWithTags[]): { nodes: FlowNode[]; links: FlowLink[] } {
   const nodes: FlowNode[] = [];
   const links: FlowLink[] = [];
-  let nextId = 0;
 
-  function addNode(stage: FlowStage, colorStage: Stage, label: string, count: number, depth: number): string {
-    const id = `n${nextId++}`;
-    nodes.push({ id, stage, colorStage, label, count, depth });
-    return id;
-  }
-
-  function visit(cohort: JobWithTags[], pathIndex: number, atStage: Stage, parentId: string, depth: number) {
+  function visit(cohort: JobWithTags[], pathIndex: number, parentId: string, depth: number) {
     const advanced = new Map<Stage, JobWithTags[]>();
-    const stayed: JobWithTags[] = [];
     for (const job of cohort) {
       const next = job.stagePath[pathIndex + 1];
       if (next) {
         const group = advanced.get(next) ?? [];
         group.push(job);
         advanced.set(next, group);
-      } else {
-        stayed.push(job);
       }
     }
 
     for (const [nextStage, group] of advanced) {
-      const id = addNode(nextStage, nextStage, STAGE_LABELS[nextStage], group.length, depth);
+      const id = `${parentId}>${nextStage}`;
+      nodes.push({ id, stage: nextStage, label: STAGE_LABELS[nextStage], jobs: group, depth });
       links.push({ source: parentId, target: id, value: group.length });
-      if (!isTerminal(nextStage)) visit(group, pathIndex + 1, nextStage, id, depth + 1);
-    }
-    if (stayed.length > 0) {
-      const id = addNode("in_progress", atStage, "In Progress", stayed.length, depth);
-      links.push({ source: parentId, target: id, value: stayed.length });
+      if (!isTerminal(nextStage)) visit(group, pathIndex + 1, id, depth + 1);
     }
   }
 
   // Every job starts at "applied" — that's the trunk every ribbon in the
   // chart flows out of, not a synthetic placeholder, so it's a real node
   // like any other stage rather than text shown above the chart.
-  const rootId = addNode("applied", "applied", STAGE_LABELS.applied, jobs.length, 0);
-  if (jobs.length > 0) visit(jobs, 0, "applied", rootId, 1);
+  const rootId = "applied";
+  nodes.push({ id: rootId, stage: "applied", label: STAGE_LABELS.applied, jobs, depth: 0 });
+  if (jobs.length > 0) visit(jobs, 0, rootId, 1);
 
   return { nodes, links };
+}
+
+/** The jobs behind one ribbon/node in the chart, identified by its root-to-
+ * node id (e.g. "applied>interviewing>offer") — since that id already
+ * encodes the exact stage path, the returned cohort is every job that
+ * passed through that whole path, from the root up to (and including) the
+ * clicked segment. Used to filter the board to a clicked ribbon's jobs. */
+export function jobsOnPath(jobs: JobWithTags[], pathId: string): JobWithTags[] {
+  return buildFlow(jobs).nodes.find((n) => n.id === pathId)?.jobs ?? [];
 }
 
 function computeRate(jobs: JobWithTags[], predicate: (job: JobWithTags) => boolean) {
@@ -191,7 +223,108 @@ function RateCard({
   );
 }
 
-function PipelineFlow({ jobs }: { jobs: JobWithTags[] }) {
+/** What the tooltip needs to render, plus `x`/`y` in the chart's own
+ * viewBox units — converted to a percentage of `width`/`height` at render
+ * time so it lines up with the SVG regardless of how large the responsive
+ * chart is actually drawn on screen. */
+interface TooltipData {
+  id: string;
+  x: number;
+  y: number;
+  label: string;
+  jobs: JobWithTags[];
+}
+
+const MAX_TOOLTIP_JOBS = 6;
+const TOOLTIP_WIDTH_PX = 192;
+// A rough ceiling on the card's own rendered height (header line + up to
+// `MAX_TOOLTIP_JOBS` list rows) — used only to keep the whole card inside
+// the chart vertically, so a slight overestimate here just means a touch
+// more clearance than strictly needed, never an overflow.
+const TOOLTIP_MAX_HEIGHT_PX = 170;
+
+function jobDisplayName(job: JobWithTags): string {
+  return job.companyName || job.positionName || "Untitled";
+}
+
+function FlowTooltip({ tooltip, width, height }: { tooltip: TooltipData; width: number; height: number }) {
+  const shown = tooltip.jobs.slice(0, MAX_TOOLTIP_JOBS);
+  const remaining = tooltip.jobs.length - shown.length;
+  const leftPct = (tooltip.x / width) * 100;
+  const topPct = (tooltip.y / height) * 100;
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.12 }}
+      className="pointer-events-none absolute z-10 rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-lg"
+      style={{
+        width: TOOLTIP_WIDTH_PX,
+        // `clamp` (not the earlier flip-to-the-other-side trick) is what
+        // actually keeps this inside the card: it mixes the anchor's own
+        // percentage position with a fixed-pixel margin from each edge, so
+        // the tooltip's fixed pixel width can never push it past either
+        // side regardless of how wide the responsive chart is rendered —
+        // including the rightmost columns, which only have ~140px of
+        // margin reserved past them for their own label.
+        left: `clamp(8px, ${leftPct}%, calc(100% - ${TOOLTIP_WIDTH_PX + 8}px))`,
+        top: `clamp(8px, ${topPct}%, calc(100% - ${TOOLTIP_MAX_HEIGHT_PX}px))`,
+      }}
+    >
+      <div className="text-[13px] font-semibold">
+        {tooltip.label} · {tooltip.jobs.length}
+      </div>
+      {shown.length > 0 && (
+        <ul className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground">
+          {shown.map((job) => (
+            <li key={job.id} className="truncate">
+              {jobDisplayName(job)}
+            </li>
+          ))}
+          {remaining > 0 && <li>+{remaining} more</li>}
+        </ul>
+      )}
+    </motion.div>
+  );
+}
+
+function PipelineFlow({
+  jobs,
+  selectedPathId,
+  onSelectPath,
+}: {
+  jobs: JobWithTags[];
+  selectedPathId: string | null;
+  onSelectPath: (id: string | null) => void;
+}) {
+  // Hovering shows a tooltip transiently; clicking pins it so it survives
+  // the pointer moving off the (thin) ribbon/node to actually read it,
+  // especially on touch where there's no hover at all. Clicking the same
+  // target again (or the chart background) unpins it.
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+  const [pinned, setPinned] = useState(false);
+
+  function showTooltip(data: TooltipData) {
+    if (!pinned) setTooltip(data);
+  }
+  function hideTooltip() {
+    if (!pinned) setTooltip(null);
+  }
+  function toggleTooltip(data: TooltipData) {
+    if (pinned && tooltip?.id === data.id) {
+      setPinned(false);
+      setTooltip(null);
+    } else {
+      setTooltip(data);
+      setPinned(true);
+    }
+  }
+  function clearPinned() {
+    setPinned(false);
+    setTooltip(null);
+  }
+
   if (jobs.length === 0) {
     return <p className="text-sm text-muted-foreground">No applications yet.</p>;
   }
@@ -231,67 +364,138 @@ function PipelineFlow({ jobs }: { jobs: JobWithTags[] }) {
     // ROW_HEIGHT/COLUMN_WIDTH/font sizes being too small relative to the
     // chart's own proportions — fixed by sizing those up instead of
     // opting out of responsive scaling.
-    <div>
+    <div
+      className="relative"
+      onClick={() => {
+        if (pinned) clearPinned();
+        if (selectedPathId) onSelectPath(null);
+      }}
+    >
       <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full">
-        {graph.links.map((link, i) => {
+        {graph.links.map((link) => {
           const target = link.target as unknown as FlowNode;
+          const linkArgs = link as unknown as Parameters<typeof ribbonPath>[0];
+          const isSelected = target.id === selectedPathId;
           return (
-            <path
-              key={i}
-              d={ribbonPath(link as unknown as Parameters<typeof ribbonPath>[0])}
+            <motion.path
+              key={target.id}
+              // Framer Motion can tween an SVG `d` attribute when the path
+              // keeps the same command structure across renders (only the
+              // numbers change) — true here since `ribbonPath` always
+              // emits the same M/C/L/C/Z shape, just re-parameterized. That
+              // makes a stage-count change morph the ribbon's taper and
+              // curve smoothly instead of it snapping to the new shape.
+              // `initial` mirrors `animate` so the very first paint (SSR
+              // included) already shows the right shape — Motion only
+              // reads `initial` on mount, so a later re-render with a
+              // different `animate` target still tweens normally.
+              initial={{ d: ribbonPath(linkArgs) }}
+              animate={{ d: ribbonPath(linkArgs) }}
+              transition={FLOW_TRANSITION}
               fill={colorFor(target)}
-              fillOpacity={0.35}
+              fillOpacity={
+                selectedPathId
+                  ? isSelected
+                    ? 0.6
+                    : 0.12
+                  : pinned && tooltip?.id !== target.id
+                    ? 0.15
+                    : 0.35
+              }
               stroke="none"
+              className="cursor-pointer transition-[fill-opacity]"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectPath(isSelected ? null : target.id);
+              }}
             />
           );
         })}
         {graph.nodes.map((node) => {
           const n = node as FlowNode & { x0: number; x1: number; y0: number; y1: number };
           const cy = (n.y0 + n.y1) / 2;
+          const nodeHeight = Math.max(n.y1 - n.y0, 1);
           // The root sits at the chart's left edge with nothing to its left
           // but margin, so its label goes there instead of overlapping the
           // ribbons fanning out to its right — every other node keeps its
           // label on its own outer (right) side.
           const isRoot = n.depth === 0;
           const textX = isRoot ? n.x0 - LABEL_GAP : n.x1 + LABEL_GAP;
+          const tooltipData: TooltipData = {
+            id: n.id,
+            x: isRoot ? n.x0 : n.x1,
+            y: cy,
+            label: n.label,
+            jobs: n.jobs,
+          };
           return (
-            <g key={n.id}>
-              <rect
-                x={n.x0}
-                y={n.y0}
+            <motion.g
+              key={n.id}
+              initial={{ x: n.x0, y: n.y0 }}
+              animate={{ x: n.x0, y: n.y0 }}
+              transition={FLOW_TRANSITION}
+              className="cursor-pointer"
+              onMouseEnter={() => showTooltip(tooltipData)}
+              onMouseLeave={hideTooltip}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleTooltip(tooltipData);
+              }}
+            >
+              <motion.rect
+                x={0}
+                y={0}
                 width={n.x1 - n.x0}
-                height={Math.max(n.y1 - n.y0, 1)}
+                initial={{ height: nodeHeight }}
+                animate={{ height: nodeHeight }}
+                transition={FLOW_TRANSITION}
                 rx={NODE_THICKNESS / 2}
                 fill="var(--foreground)"
+                opacity={pinned && tooltip?.id !== n.id ? 0.4 : 1}
               />
-              <text
-                x={textX}
-                y={cy - 8}
+              <motion.text
+                x={textX - n.x0}
+                initial={{ y: cy - 8 - n.y0 }}
+                animate={{ y: cy - 8 - n.y0 }}
+                transition={FLOW_TRANSITION}
                 textAnchor={isRoot ? "end" : "start"}
                 fontSize={isRoot ? 17 : 15}
                 fontWeight={700}
                 fill="var(--foreground)"
               >
-                {n.count}
-              </text>
-              <text
-                x={textX}
-                y={cy + 10}
+                {n.jobs.length}
+              </motion.text>
+              <motion.text
+                x={textX - n.x0}
+                initial={{ y: cy + 10 - n.y0 }}
+                animate={{ y: cy + 10 - n.y0 }}
+                transition={FLOW_TRANSITION}
                 textAnchor={isRoot ? "end" : "start"}
                 fontSize={isRoot ? 11.5 : 11}
                 fill={isRoot ? "var(--foreground)" : "var(--muted-foreground)"}
               >
                 {n.label}
-              </text>
-            </g>
+              </motion.text>
+            </motion.g>
           );
         })}
       </svg>
+      <AnimatePresence>
+        {tooltip && <FlowTooltip key={tooltip.id} tooltip={tooltip} width={width} height={height} />}
+      </AnimatePresence>
     </div>
   );
 }
 
-export function PipelineStats({ jobs }: { jobs: JobWithTags[] }) {
+export function PipelineStats({
+  jobs,
+  selectedPathId,
+  onSelectPath,
+}: {
+  jobs: JobWithTags[];
+  selectedPathId: string | null;
+  onSelectPath: (id: string | null) => void;
+}) {
   // "Ever reached", not "currently at" — a job later moved to "Rejected"
   // still counts here if it got that far first.
   const interviewRate = computeRate(
@@ -304,7 +508,7 @@ export function PipelineStats({ jobs }: { jobs: JobWithTags[] }) {
     <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
       <div className="min-w-0 rounded-[10px] border p-5 pb-4">
         <h3 className="mb-3.5 text-[15px] font-bold">Pipeline</h3>
-        <PipelineFlow jobs={jobs} />
+        <PipelineFlow jobs={jobs} selectedPathId={selectedPathId} onSelectPath={onSelectPath} />
       </div>
       <div className="flex flex-col gap-4">
         <RateCard label="Interview Rate" rate={interviewRate} color={STAGE_COLORS.interviewing} />

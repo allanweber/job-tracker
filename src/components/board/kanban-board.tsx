@@ -11,7 +11,6 @@ import {
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
-  type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
@@ -85,16 +84,6 @@ export function KanbanBoard({
     setActiveId(String(event.active.id));
   }
 
-  function handleDragOver(event: DragOverEvent) {
-    const { active, over } = event;
-    if (!over) return;
-    const activeStage = findStage(String(active.id));
-    const overStage = findStage(String(over.id));
-    if (!activeStage || !overStage || activeStage === overStage) return;
-
-    setJobs((prev) => prev.map((j) => (j.id === active.id ? { ...j, stage: overStage } : j)));
-  }
-
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveId(null);
@@ -146,7 +135,6 @@ export function KanbanBoard({
       sensors={sensors}
       collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0 lg:pb-0">

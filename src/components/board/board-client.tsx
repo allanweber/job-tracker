@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AddJobBox } from "@/components/jobs/add-job-box";
-import { PipelineStats } from "@/components/board/pipeline-stats";
+import { PipelineStats, jobsOnPath } from "@/components/board/pipeline-stats";
 import { KanbanBoard } from "@/components/board/kanban-board";
 import { JobListView } from "@/components/board/job-list-view";
 import { ImportResultsDialog } from "@/components/board/import-results-dialog";
@@ -22,6 +22,7 @@ type ViewMode = "columns" | "list";
 export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
   const [jobs, setJobs] = useState(initialJobs);
   const [query, setQuery] = useState("");
+  const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("columns");
   const [importing, setImporting] = useState(false);
   const [importErrors, setImportErrors] = useState<ImportError[] | null>(null);
@@ -58,14 +59,15 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
   }
 
   const visibleJobs = useMemo(() => {
+    const base = selectedPathId ? jobsOnPath(jobs, selectedPathId) : jobs;
     const q = query.trim().toLowerCase();
-    if (!q) return jobs;
-    return jobs.filter((j) =>
+    if (!q) return base;
+    return base.filter((j) =>
       [j.positionName, j.companyName, j.location].some((field) =>
         (field ?? "").toLowerCase().includes(q),
       ),
     );
-  }, [jobs, query]);
+  }, [jobs, query, selectedPathId]);
 
   function handleDeleted(id: string) {
     setJobs((prev) => prev.filter((j) => j.id !== id));
@@ -115,7 +117,23 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <PipelineStats jobs={jobs} />
+      <PipelineStats jobs={jobs} selectedPathId={selectedPathId} onSelectPath={setSelectedPathId} />
+
+      {selectedPathId && (
+        <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-[13px]">
+          <span>
+            Showing {visibleJobs.length} job{visibleJobs.length === 1 ? "" : "s"} from the selected
+            pipeline path.
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedPathId(null)}
+            className="font-medium text-cta hover:underline"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       <AddJobBox />
 

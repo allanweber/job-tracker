@@ -27,6 +27,13 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * means whatever ladder progress existed no longer matters, so history
  * resets back to just "applied" plus this event; leaving it behaves like a
  * fresh single move to wherever it's going next.
+ *
+ * "rejected" is the one rung on the ladder that isn't a real progression
+ * step — unlike offer (which does imply an interview happened), a rejection
+ * can land after any stage without the applicant ever reaching the ones in
+ * between. So moving forward *into* "rejected" only logs "rejected" itself,
+ * never backfills the rungs before it (an applied→rejected job never
+ * interviewed; an interviewing→rejected job never got an offer).
  */
 async function recordStageChange(tx: Tx, jobId: string, fromStage: Stage, toStage: Stage) {
   // A no-op transition must never touch history — every caller is expected
@@ -48,7 +55,7 @@ async function recordStageChange(tx: Tx, jobId: string, fromStage: Stage, toStag
   const toIndex = STAGE_ORDER.indexOf(toStage);
 
   if (toIndex > fromIndex) {
-    const passedThrough = STAGE_ORDER.slice(fromIndex + 1, toIndex + 1);
+    const passedThrough = toStage === "rejected" ? [toStage] : STAGE_ORDER.slice(fromIndex + 1, toIndex + 1);
     await tx.insert(jobStageHistory).values(passedThrough.map((stage) => ({ jobId, stage })));
   } else {
     const invalidated = STAGE_ORDER.slice(toIndex + 1);
