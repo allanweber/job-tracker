@@ -42,12 +42,21 @@ async function recordStageChange(tx: Tx, jobId: string, fromStage: Stage, toStag
   if (fromStage === toStage) return;
 
   if (toStage === "no_answer" || fromStage === "no_answer") {
+    // "no_answer" only ever coexists with "applied" in history, so entering
+    // it clears everything else and leaving it clears its own row.
     if (toStage === "no_answer") {
       await tx
         .delete(jobStageHistory)
         .where(and(eq(jobStageHistory.jobId, jobId), ne(jobStageHistory.stage, "applied")));
+    } else {
+      await tx
+        .delete(jobStageHistory)
+        .where(and(eq(jobStageHistory.jobId, jobId), eq(jobStageHistory.stage, "no_answer")));
     }
-    await tx.insert(jobStageHistory).values({ jobId, stage: toStage });
+    // "applied" is already in history (it's logged at creation).
+    if (toStage !== "applied") {
+      await tx.insert(jobStageHistory).values({ jobId, stage: toStage });
+    }
     return;
   }
 
