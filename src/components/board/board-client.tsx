@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -138,12 +138,27 @@ export function BoardClient({ initialJobs }: { initialJobs: JobWithTags[] }) {
       <AddJobBox />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          placeholder="Search by job title, company name, or location"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="min-w-56 flex-1"
-        />
+        <div className="relative min-w-56 flex-1">
+          <Input
+            placeholder="Search by job title, company name, or location"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setQuery("");
+            }}
+            className={query ? "pr-8" : undefined}
+          />
+          {query && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
         <div className="flex overflow-hidden rounded-lg border">
           <button
             type="button"
